@@ -66,6 +66,8 @@
     .btn-green:hover { background: rgba(76,175,125,0.22); }
     .btn-full { width: 100%; }
     .btn-sm { padding: 0.45rem 0.9rem; font-size: 0.8rem; }
+    .btn-icon { padding: 0.45rem; width: 32px; height: 32px; }
+    .btn-icon svg { width: 14px; height: 14px; }
 
     /* ADMIN LAYOUT */
     #admin-screen { display: none; min-height: 100vh; }
@@ -132,7 +134,7 @@
     .stat-card-value.green { color: var(--green); }
     .stat-card-value.red { color: var(--promo); }
 
-    /* TOOLBAR — persistent, not re-rendered */
+    /* TOOLBAR */
     .toolbar { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
     .search-wrap { position: relative; flex: 1; min-width: 200px; }
     .search-wrap svg { position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--muted); pointer-events: none; }
@@ -217,7 +219,7 @@
     .img-preview { width: 100%; height: 160px; border-radius: var(--radius); object-fit: cover; background: var(--dark); border: 1px solid var(--border); margin-top: 0.5rem; display: none; }
     .img-preview.show { display: block; }
 
-    /* DELETE CONFIRM */
+    /* CONFIRM MODAL */
     .confirm-overlay {
       position: fixed; inset: 0; z-index: 300;
       background: rgba(0,0,0,0.8); backdrop-filter: blur(6px);
@@ -236,6 +238,23 @@
     .confirm-title { font-family: 'Playfair Display', serif; font-size: 1.2rem; margin-bottom: 0.5rem; }
     .confirm-sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; line-height: 1.5; }
     .confirm-actions { display: flex; gap: 0.7rem; justify-content: center; }
+
+    /* CATEGORIES PAGE */
+    .cat-list { display: flex; flex-direction: column; gap: 0.7rem; }
+    .cat-row {
+      display: flex; align-items: center; gap: 0.8rem;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 0.9rem 1.1rem;
+      transition: border-color var(--t);
+    }
+    .cat-row:hover { border-color: var(--border2); }
+    .cat-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+    .cat-name { flex: 1; font-weight: 600; font-size: 0.92rem; }
+    .cat-slug-pill { font-size: 0.72rem; color: var(--muted); font-family: monospace; background: var(--dark); padding: 0.15rem 0.55rem; border-radius: 4px; border: 1px solid var(--border); }
+    .cat-count-label { font-size: 0.75rem; color: var(--muted); min-width: 70px; text-align: right; }
+    .cat-default-badge { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--border); padding: 0.15rem 0.5rem; border-radius: 100px; }
+    .cat-actions { display: flex; gap: 0.4rem; }
+    .cat-modal-inner { max-width: 420px; }
 
     /* TOAST */
     .toast {
@@ -306,12 +325,15 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           Produtos
         </button>
+        <button class="sidebar-btn" data-page="categorias">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+          Categorias
+        </button>
         <button class="sidebar-btn" data-page="config">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
           Configurações
         </button>
       </nav>
-
       <main class="main-content" id="main-content"></main>
     </div>
   </div>
@@ -332,12 +354,7 @@
         <div class="form-row">
           <div class="field">
             <label>Categoria *</label>
-            <select id="form-category">
-              <option value="">Selecione...</option>
-              <option value="masculino">Masculino</option>
-              <option value="feminino">Feminino</option>
-              <option value="infantil">Infantil</option>
-            </select>
+            <select id="form-category"><option value="">Selecione...</option></select>
           </div>
           <div class="field">
             <label>Badge / Destaque</label>
@@ -355,7 +372,7 @@
           </div>
           <div class="field">
             <label>Preço Antigo (R$)</label>
-            <input type="number" id="form-old-price" placeholder="Deixe vazio se não houver" min="0" step="0.01" />
+            <input type="number" id="form-old-price" placeholder="Vazio se não houver" min="0" step="0.01" />
           </div>
         </div>
         <div class="field">
@@ -366,7 +383,7 @@
         <div class="field">
           <label>Tamanhos Disponíveis *</label>
           <div class="size-picker-wrap" id="size-picker"></div>
-          <div class="size-hint">Clique para selecionar/desselecionar</div>
+          <div class="size-hint">Clique nos números para selecionar/desmarcar</div>
         </div>
       </div>
       <div class="modal-footer">
@@ -379,15 +396,44 @@
     </div>
   </div>
 
-  <!-- DELETE CONFIRM -->
+  <!-- CATEGORY MODAL -->
+  <div class="modal-overlay" id="cat-modal">
+    <div class="modal cat-modal-inner">
+      <div class="modal-header">
+        <div class="modal-title" id="cat-modal-title">Nova Categoria</div>
+        <button class="modal-close" id="cat-modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="cat-form-original-slug" />
+        <div class="field">
+          <label>Nome da Categoria *</label>
+          <input type="text" id="cat-form-name" placeholder="Ex: Esportivo" />
+        </div>
+        <div class="field">
+          <label>Slug (identificador) *</label>
+          <input type="text" id="cat-form-slug" placeholder="esportivo" />
+          <span style="font-size:.72rem;color:var(--muted);margin-top:.35rem;display:block;">Somente letras minúsculas, números e hífens. Gerado automaticamente.</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="cat-modal-cancel">Cancelar</button>
+        <button class="btn btn-gold" id="cat-modal-save">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Salvar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIRM DIALOG -->
   <div class="confirm-overlay" id="confirm-modal">
     <div class="confirm-box">
-      <div class="confirm-icon">🗑️</div>
-      <div class="confirm-title">Excluir produto?</div>
-      <div class="confirm-sub" id="confirm-sub">Esta ação não pode ser desfeita.</div>
+      <div class="confirm-icon" id="confirm-icon">🗑️</div>
+      <div class="confirm-title" id="confirm-title">Confirmar exclusão</div>
+      <div class="confirm-sub" id="confirm-sub"></div>
       <div class="confirm-actions">
         <button class="btn btn-outline" id="confirm-cancel">Cancelar</button>
-        <button class="btn btn-danger" id="confirm-ok">Sim, excluir</button>
+        <button class="btn btn-danger" id="confirm-ok">Confirmar</button>
       </div>
     </div>
   </div>
@@ -399,7 +445,12 @@
     const ADMIN_USER = 'admin';
     const ADMIN_PASS = 'admin123'; // ⚠️ troque antes de publicar
 
-    // ── DEFAULT PRODUCTS
+    // ── DEFAULTS
+    const DEFAULT_CATEGORIES = [
+      { slug: 'masculino', name: 'Masculino' },
+      { slug: 'feminino',  name: 'Feminino'  },
+      { slug: 'infantil',  name: 'Infantil'  },
+    ];
     const DEFAULT_PRODUCTS = [
       { id:1, name:'Tênis Urban Runner',     category:'masculino', price:189.90, oldPrice:null,   sizes:[38,39,40,41,42,43],       badge:'novo',  img:'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=80' },
       { id:2, name:'Sapatilha Delicate',     category:'feminino',  price:129.90, oldPrice:179.90, sizes:[35,36,37,38,39,40],       badge:'promo', img:'https://images.unsplash.com/photo-1518049362265-d5b2a6467637?w=600&q=80' },
@@ -410,63 +461,79 @@
       { id:7, name:'Mule Suede Chic',        category:'feminino',  price:149.90, oldPrice:null,   sizes:[35,36,37,38,39,40],       badge:null,    img:'https://images.unsplash.com/photo-1596703263926-eb0762ee17e4?w=600&q=80' },
       { id:8, name:'Tênis Infantil Star',    category:'infantil',  price:99.90,  oldPrice:129.90, sizes:[28,29,30,31,32,33,34],    badge:'promo', img:'https://images.unsplash.com/photo-1555604733-82b5f0d1d99b?w=600&q=80' },
     ];
-
     const ALL_SIZES = [26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44];
-    const CAT_LABEL = { masculino:'Masculino', feminino:'Feminino', infantil:'Infantil' };
 
-    // ── STORAGE
+    // ── STORAGE HELPERS
     function getProducts() {
-      try {
-        const raw = localStorage.getItem('cc_products');
-        return raw ? JSON.parse(raw) : [...DEFAULT_PRODUCTS];
-      } catch { return [...DEFAULT_PRODUCTS]; }
+      try { const r = localStorage.getItem('cc_products'); return r ? JSON.parse(r) : [...DEFAULT_PRODUCTS]; }
+      catch { return [...DEFAULT_PRODUCTS]; }
     }
     function saveProducts(arr) { localStorage.setItem('cc_products', JSON.stringify(arr)); }
-    function nextId(arr) { return arr.length > 0 ? Math.max(...arr.map(p => p.id)) + 1 : 1; }
+    function nextId(arr) { return arr.length ? Math.max(...arr.map(p => p.id)) + 1 : 1; }
 
-    // ── TOAST — FIX: cancel previous timeout to avoid premature hide
-    let toastTimer = null;
+    function getCategories() {
+      try { const r = localStorage.getItem('cc_categories'); return r ? JSON.parse(r) : [...DEFAULT_CATEGORIES]; }
+      catch { return [...DEFAULT_CATEGORIES]; }
+    }
+    function saveCategories(arr) { localStorage.setItem('cc_categories', JSON.stringify(arr)); }
+
+    function catName(slug) {
+      const c = getCategories().find(x => x.slug === slug);
+      return c ? c.name : slug;
+    }
+
+    // ── UTILITIES
+    const fmt     = n  => 'R$ ' + Number(n).toFixed(2).replace('.', ',');
+    const esc     = s  => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const slugify = s  => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+
+    // ── TOAST
+    let _toastTimer = null;
     function toast(msg) {
       const t = document.getElementById('toast');
       t.textContent = msg;
       t.classList.add('show');
-      if (toastTimer) clearTimeout(toastTimer);
-      toastTimer = setTimeout(() => { t.classList.remove('show'); toastTimer = null; }, 2800);
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
     }
 
-    const fmt = n => 'R$ ' + Number(n).toFixed(2).replace('.', ',');
-
     // ── STATE
-    let products = getProducts();
-    let searchQ = '';
-    let filterCat = 'todos';
-    let deleteTargetId = null;
-    let currentPage = 'produtos';
-    let formSizes = new Set();
+    let products     = getProducts();
+    let searchQ      = '';
+    let filterCat    = 'todos';
+    let currentPage  = 'produtos';
+    let formSizes    = new Set();
+    let confirmCb    = null;
 
-    // ── SIDEBAR highlight — FIX: targets persistent DOM elements, not innerHTML
+    // ════════════════════════════════════
+    // SIDEBAR NAV
+    // ════════════════════════════════════
     function updateSidebarActive() {
       document.querySelectorAll('#sidebar .sidebar-btn[data-page]').forEach(b => {
         b.classList.toggle('active', b.dataset.page === currentPage);
       });
     }
 
-    // ── RENDER PAGES
     function renderPage() {
       updateSidebarActive();
-      if (currentPage === 'produtos') renderProductsPage();
-      else if (currentPage === 'config') renderConfigPage();
+      const mc = document.getElementById('main-content');
+      // clear non-persistent pages
+      if (currentPage !== 'produtos') {
+        const pp = document.getElementById('products-page');
+        if (pp) pp.remove();
+      }
+      if      (currentPage === 'produtos')   renderProductsPage();
+      else if (currentPage === 'categorias') renderCategoriesPage();
+      else if (currentPage === 'config')     renderConfigPage();
     }
 
-    // ── PRODUCTS PAGE
-    // FIX: toolbar (search + filter) lives outside the re-rendered tbody zone
-    // so the input never loses focus. Stats and rows refresh independently.
+    // ════════════════════════════════════
+    // PRODUCTS PAGE
+    // ════════════════════════════════════
     function renderProductsPage() {
-      const content = document.getElementById('main-content');
-
-      // First render: build the static skeleton with persistent toolbar
+      const mc = document.getElementById('main-content');
       if (!document.getElementById('products-page')) {
-        content.innerHTML = `
+        mc.innerHTML = `
           <div id="products-page">
             <div class="page-header">
               <div>
@@ -484,156 +551,106 @@
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input id="search-input" type="text" placeholder="Buscar produto..." />
               </div>
-              <select id="filter-cat-select">
-                <option value="todos">Todas as categorias</option>
-                <option value="masculino">Masculino</option>
-                <option value="feminino">Feminino</option>
-                <option value="infantil">Infantil</option>
-              </select>
+              <select id="filter-cat-select"></select>
             </div>
             <div class="table-wrap">
               <table>
                 <thead>
-                  <tr>
-                    <th>Produto</th><th>Categoria</th><th>Preço</th>
-                    <th>Badge</th><th>Tamanhos</th><th>Ações</th>
-                  </tr>
+                  <tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Badge</th><th>Tamanhos</th><th>Ações</th></tr>
                 </thead>
                 <tbody id="products-tbody"></tbody>
               </table>
             </div>
           </div>`;
 
-        // Wire toolbar events once — they survive re-renders
         document.getElementById('btn-add-product').addEventListener('click', openAddModal);
         document.getElementById('search-input').addEventListener('input', function() {
-          searchQ = this.value;
-          refreshProductsData();
+          searchQ = this.value; refreshProductsData();
         });
         document.getElementById('filter-cat-select').addEventListener('change', function() {
-          filterCat = this.value;
-          refreshProductsData();
+          filterCat = this.value; refreshProductsData();
         });
       }
-
-      // Sync toolbar values with state (e.g. after switching pages)
       document.getElementById('search-input').value = searchQ;
-      document.getElementById('filter-cat-select').value = filterCat;
-
+      buildCatFilter();
       refreshProductsData();
     }
 
-    // Only re-renders stats + table rows — toolbar untouched
+    function buildCatFilter() {
+      const sel  = document.getElementById('filter-cat-select');
+      if (!sel) return;
+      const cats = getCategories();
+      sel.innerHTML = `<option value="todos">Todas as categorias</option>` +
+        cats.map(c => `<option value="${esc(c.slug)}"${filterCat===c.slug?' selected':''}>${esc(c.name)}</option>`).join('');
+    }
+
     function refreshProductsData() {
       const total  = products.length;
-      const promos = products.filter(p => p.oldPrice || p.badge === 'promo').length;
-      const cats   = [...new Set(products.map(p => p.category))].length;
+      const promos = products.filter(p => p.oldPrice || p.badge==='promo').length;
+      const ncats  = [...new Set(products.map(p => p.category))].length;
 
       document.getElementById('prod-sub').textContent =
-        `${total} produto${total !== 1 ? 's' : ''} cadastrado${total !== 1 ? 's' : ''}`;
-
+        `${total} produto${total!==1?'s':''} cadastrado${total!==1?'s':''}`;
       document.getElementById('stats-row').innerHTML = `
-        <div class="stat-card"><div class="stat-card-label">Total de Produtos</div><div class="stat-card-value gold">${total}</div></div>
+        <div class="stat-card"><div class="stat-card-label">Total</div><div class="stat-card-value gold">${total}</div></div>
         <div class="stat-card"><div class="stat-card-label">Em Promoção</div><div class="stat-card-value red">${promos}</div></div>
-        <div class="stat-card"><div class="stat-card-label">Categorias</div><div class="stat-card-value">${cats}</div></div>`;
+        <div class="stat-card"><div class="stat-card-label">Categorias Usadas</div><div class="stat-card-value">${ncats}</div></div>`;
 
-      const filtered = products.filter(p => {
+      const list = products.filter(p => {
         const mQ   = !searchQ || p.name.toLowerCase().includes(searchQ.toLowerCase());
-        const mCat = filterCat === 'todos' || p.category === filterCat;
+        const mCat = filterCat==='todos' || p.category===filterCat;
         return mQ && mCat;
       });
 
-      const rows = filtered.length === 0
-        ? `<tr><td colspan="6"><div class="empty-state"><strong>Nenhum produto encontrado</strong>Ajuste a busca ou os filtros.</div></td></tr>`
-        : filtered.map(p => `
+      const rows = list.length === 0
+        ? `<tr><td colspan="6"><div class="empty-state"><strong>Nenhum produto encontrado</strong>Ajuste os filtros ou adicione produtos.</div></td></tr>`
+        : list.map(p => `
           <tr>
-            <td>
-              <div class="td-img-wrap">
-                <img class="td-img" src="${esc(p.img)}" alt="${esc(p.name)}"
-                  onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'48\' height=\'48\'%3E%3Crect fill=\'%231a1a1a\' width=\'48\' height=\'48\'/%3E%3C/svg%3E'" />
-                <span class="td-name">${esc(p.name)}</span>
-              </div>
-            </td>
-            <td><span class="td-cat">${CAT_LABEL[p.category] || p.category}</span></td>
+            <td><div class="td-img-wrap">
+              <img class="td-img" src="${esc(p.img)}" alt="${esc(p.name)}"
+                onerror="this.style.background='#1a1a1a'" />
+              <span class="td-name">${esc(p.name)}</span>
+            </div></td>
+            <td><span class="td-cat">${esc(catName(p.category))}</span></td>
             <td>
               <span class="td-price">${fmt(p.price)}</span>
               ${p.oldPrice ? `<span class="td-price-old">${fmt(p.oldPrice)}</span>` : ''}
             </td>
             <td>
-              ${p.badge === 'promo' ? '<span class="td-badge badge-promo">Promoção</span>'
-                : p.badge === 'novo' ? '<span class="td-badge badge-novo">Novo</span>'
+              ${p.badge==='promo' ? '<span class="td-badge badge-promo">Promoção</span>'
+                : p.badge==='novo' ? '<span class="td-badge badge-novo">Novo</span>'
                 : '<span class="badge-none">—</span>'}
             </td>
             <td><span class="td-sizes">${p.sizes.join(', ')}</span></td>
-            <td>
-              <div class="td-actions">
-                <button class="btn btn-outline btn-sm" data-edit="${p.id}">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                  Editar
-                </button>
-                <button class="btn btn-danger btn-sm" data-delete="${p.id}">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                </button>
-              </div>
-            </td>
+            <td><div class="td-actions">
+              <button class="btn btn-outline btn-sm" data-edit="${p.id}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Editar
+              </button>
+              <button class="btn btn-danger btn-sm btn-icon" data-delete="${p.id}" title="Excluir">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+              </button>
+            </div></td>
           </tr>`).join('');
 
       const tbody = document.getElementById('products-tbody');
       tbody.innerHTML = rows;
-
-      // Delegate edit/delete from tbody — no inline onclick, avoids XSS
-      tbody.querySelectorAll('[data-edit]').forEach(btn => {
-        btn.addEventListener('click', () => openEditModal(Number(btn.dataset.edit)));
-      });
-      tbody.querySelectorAll('[data-delete]').forEach(btn => {
-        btn.addEventListener('click', () => openDeleteConfirm(Number(btn.dataset.delete)));
-      });
+      tbody.querySelectorAll('[data-edit]').forEach(b =>
+        b.addEventListener('click', () => openEditModal(Number(b.dataset.edit))));
+      tbody.querySelectorAll('[data-delete]').forEach(b =>
+        b.addEventListener('click', () => confirmDeleteProduct(Number(b.dataset.delete))));
     }
 
-    // ── CONFIG PAGE
-    function renderConfigPage() {
-      const wpp = localStorage.getItem('cc_whatsapp') || '5500000000000';
-      document.getElementById('main-content').innerHTML = `
-        <div class="page-header">
-          <div><div class="page-title">Configurações</div><div class="page-sub">Ajustes gerais da loja</div></div>
-        </div>
-        <div style="max-width:480px;display:flex;flex-direction:column;gap:1.3rem;">
-          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
-            <div style="font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;">WhatsApp</div>
-            <div class="field">
-              <label>Número (com DDI+DDD, sem espaços)</label>
-              <input type="text" id="cfg-wpp" placeholder="5551999887766" value="${esc(wpp)}" />
-            </div>
-            <button class="btn btn-gold" style="align-self:flex-start" id="btn-save-config">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Salvar
-            </button>
-          </div>
-          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
-            <div style="font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;">Dados</div>
-            <p style="color:var(--muted);font-size:.85rem;line-height:1.6;">Exporte os produtos como JSON para backup ou migração para outro dispositivo.</p>
-            <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
-              <button class="btn btn-green" id="btn-export">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Exportar JSON
-              </button>
-              <button class="btn btn-danger" id="btn-reset">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
-                Resetar Produtos
-              </button>
-            </div>
-          </div>
-        </div>`;
-
-      document.getElementById('btn-save-config').addEventListener('click', () => {
-        localStorage.setItem('cc_whatsapp', document.getElementById('cfg-wpp').value.trim());
-        toast('✅ Configurações salvas!');
-      });
-      document.getElementById('btn-export').addEventListener('click', exportJSON);
-      document.getElementById('btn-reset').addEventListener('click', resetProducts);
+    // ════════════════════════════════════
+    // PRODUCT MODAL
+    // ════════════════════════════════════
+    function populateCatSelect(currentSlug) {
+      const sel  = document.getElementById('form-category');
+      const cats = getCategories();
+      sel.innerHTML = `<option value="">Selecione...</option>` +
+        cats.map(c => `<option value="${esc(c.slug)}"${currentSlug===c.slug?' selected':''}>${esc(c.name)}</option>`).join('');
     }
 
-    // ── MODAL
     function buildSizePicker() {
       const wrap = document.getElementById('size-picker');
       wrap.innerHTML = '';
@@ -653,15 +670,16 @@
       formSizes = new Set();
       document.getElementById('form-id').value        = '';
       document.getElementById('form-name').value      = '';
-      document.getElementById('form-category').value  = '';
       document.getElementById('form-badge').value     = '';
       document.getElementById('form-price').value     = '';
       document.getElementById('form-old-price').value = '';
       document.getElementById('form-img').value       = '';
       document.getElementById('form-img-preview').classList.remove('show');
       document.getElementById('modal-title').textContent = 'Novo Produto';
+      populateCatSelect('');
       buildSizePicker();
       document.getElementById('product-modal').classList.add('open');
+      setTimeout(() => document.getElementById('form-name').focus(), 50);
     }
 
     function openEditModal(id) {
@@ -670,7 +688,6 @@
       formSizes = new Set(p.sizes);
       document.getElementById('form-id').value        = p.id;
       document.getElementById('form-name').value      = p.name;
-      document.getElementById('form-category').value  = p.category;
       document.getElementById('form-badge').value     = p.badge || '';
       document.getElementById('form-price').value     = p.price;
       document.getElementById('form-old-price').value = p.oldPrice || '';
@@ -678,13 +695,14 @@
       const prev = document.getElementById('form-img-preview');
       prev.src = p.img; prev.classList.add('show');
       document.getElementById('modal-title').textContent = 'Editar Produto';
+      populateCatSelect(p.category);
       buildSizePicker();
       document.getElementById('product-modal').classList.add('open');
     }
 
-    function closeModal() { document.getElementById('product-modal').classList.remove('open'); }
+    function closeProductModal() { document.getElementById('product-modal').classList.remove('open'); }
 
-    function saveModal() {
+    function saveProductModal() {
       const id    = document.getElementById('form-id').value;
       const name  = document.getElementById('form-name').value.trim();
       const cat   = document.getElementById('form-category').value;
@@ -692,75 +710,241 @@
       const price = parseFloat(document.getElementById('form-price').value);
       const oldP  = parseFloat(document.getElementById('form-old-price').value) || null;
       const img   = document.getElementById('form-img').value.trim();
-      const sizes = [...formSizes].sort((a, b) => a - b);
+      const sizes = [...formSizes].sort((a,b) => a-b);
 
-      if (!name || !cat || isNaN(price) || price <= 0 || !img || sizes.length === 0) {
-        toast('⚠️ Preencha todos os campos obrigatórios e selecione pelo menos um tamanho.');
-        return;
-      }
+      if (!name)                  { toast('⚠️ Informe o nome do produto.');     return; }
+      if (!cat)                   { toast('⚠️ Selecione uma categoria.');        return; }
+      if (isNaN(price)||price<=0) { toast('⚠️ Informe um preço válido.');        return; }
+      if (!img)                   { toast('⚠️ Informe a URL da foto.');          return; }
+      if (!sizes.length)          { toast('⚠️ Selecione pelo menos um tamanho.'); return; }
 
       if (id) {
         const idx = products.findIndex(p => p.id === Number(id));
-        if (idx > -1) products[idx] = { ...products[idx], name, category: cat, badge, price, oldPrice: oldP, img, sizes };
-        toast('✅ Produto atualizado com sucesso!');
+        if (idx > -1) products[idx] = { ...products[idx], name, category:cat, badge, price, oldPrice:oldP, img, sizes };
+        toast('✅ Produto atualizado!');
       } else {
-        products.push({ id: nextId(products), name, category: cat, badge, price, oldPrice: oldP, img, sizes });
-        toast('✅ Produto adicionado com sucesso!');
+        products.push({ id: nextId(products), name, category:cat, badge, price, oldPrice:oldP, img, sizes });
+        toast('✅ Produto adicionado!');
       }
       saveProducts(products);
-      closeModal();
+      closeProductModal();
       refreshProductsData();
     }
 
-    // ── DELETE
-    function openDeleteConfirm(id) {
-      deleteTargetId = id;
+    // ── confirm delete product
+    function confirmDeleteProduct(id) {
       const p = products.find(x => x.id === id);
-      document.getElementById('confirm-sub').textContent =
-        `"${p ? p.name : ''}" será removido permanentemente.`;
+      document.getElementById('confirm-icon').textContent  = '🗑️';
+      document.getElementById('confirm-title').textContent = 'Excluir produto?';
+      document.getElementById('confirm-sub').textContent   = `"${p?.name}" será removido permanentemente.`;
+      confirmCb = () => {
+        products = products.filter(x => x.id !== id);
+        saveProducts(products);
+        toast('🗑️ Produto excluído.');
+        closeConfirm();
+        refreshProductsData();
+      };
       document.getElementById('confirm-modal').classList.add('open');
     }
 
+    // ════════════════════════════════════
+    // CATEGORIES PAGE
+    // ════════════════════════════════════
+    function renderCategoriesPage() {
+      document.getElementById('main-content').innerHTML = `
+        <div id="categories-page">
+          <div class="page-header">
+            <div>
+              <div class="page-title">Categorias</div>
+              <div class="page-sub" id="cat-page-sub"></div>
+            </div>
+            <button class="btn btn-gold" id="btn-new-cat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nova Categoria
+            </button>
+          </div>
+          <div class="cat-list" id="cat-list"></div>
+        </div>`;
+      document.getElementById('btn-new-cat').addEventListener('click', () => openCatModal(null));
+      refreshCatsPage();
+    }
+
+    function refreshCatsPage() {
+      const cats = getCategories();
+      const sub  = document.getElementById('cat-page-sub');
+      if (sub) sub.textContent = `${cats.length} categorias cadastradas`;
+      const list = document.getElementById('cat-list');
+      if (!list) return;
+
+      if (!cats.length) {
+        list.innerHTML = `<div class="empty-state"><strong>Nenhuma categoria</strong>Crie categorias para organizar seus produtos.</div>`;
+        return;
+      }
+
+      const isDefault = slug => DEFAULT_CATEGORIES.some(c => c.slug === slug);
+
+      list.innerHTML = cats.map(c => {
+        const count = products.filter(p => p.category === c.slug).length;
+        return `<div class="cat-row">
+          <div class="cat-dot"></div>
+          <div class="cat-name">${esc(c.name)}</div>
+          <span class="cat-slug-pill">${esc(c.slug)}</span>
+          <span class="cat-count-label">${count} produto${count!==1?'s':''}</span>
+          ${isDefault(c.slug) ? '<span class="cat-default-badge">padrão</span>' : ''}
+          <div class="cat-actions">
+            <button class="btn btn-outline btn-sm" data-edit-cat="${esc(c.slug)}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Editar
+            </button>
+            <button class="btn btn-danger btn-sm btn-icon" data-delete-cat="${esc(c.slug)}" title="Excluir">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+            </button>
+          </div>
+        </div>`;
+      }).join('');
+
+      list.querySelectorAll('[data-edit-cat]').forEach(b =>
+        b.addEventListener('click', () => openCatModal(b.dataset.editCat)));
+      list.querySelectorAll('[data-delete-cat]').forEach(b =>
+        b.addEventListener('click', () => confirmDeleteCat(b.dataset.deleteCat)));
+    }
+
+    // ── CATEGORY MODAL
+    function openCatModal(slugToEdit) {
+      const cats   = getCategories();
+      const isEdit = !!slugToEdit;
+      const cat    = isEdit ? cats.find(c => c.slug === slugToEdit) : null;
+
+      document.getElementById('cat-modal-title').textContent     = isEdit ? 'Editar Categoria' : 'Nova Categoria';
+      document.getElementById('cat-form-original-slug').value    = isEdit ? slugToEdit : '';
+      document.getElementById('cat-form-name').value             = isEdit ? cat?.name  : '';
+      document.getElementById('cat-form-slug').value             = isEdit ? cat?.slug  : '';
+      document.getElementById('cat-modal').classList.add('open');
+      setTimeout(() => document.getElementById('cat-form-name').focus(), 50);
+    }
+
+    function closeCatModal() { document.getElementById('cat-modal').classList.remove('open'); }
+
+    function saveCatModal() {
+      const name     = document.getElementById('cat-form-name').value.trim();
+      const slug     = document.getElementById('cat-form-slug').value.trim();
+      const original = document.getElementById('cat-form-original-slug').value;
+
+      if (!name) { toast('⚠️ Informe o nome da categoria.'); return; }
+      if (!slug) { toast('⚠️ O slug não pode ser vazio.'); return; }
+      if (!/^[a-z0-9-]+$/.test(slug)) { toast('⚠️ Slug inválido. Use só letras minúsculas, números e hífens.'); return; }
+
+      let cats   = getCategories();
+      const isEdit = !!original;
+      const collision = cats.some(c => c.slug === slug && c.slug !== original);
+      if (collision) { toast('⚠️ Já existe uma categoria com esse slug.'); return; }
+
+      if (isEdit) {
+        // If slug changed, update all products using old slug
+        if (slug !== original) {
+          products = products.map(p => p.category === original ? { ...p, category: slug } : p);
+          saveProducts(products);
+        }
+        cats = cats.map(c => c.slug === original ? { slug, name } : c);
+        toast('✅ Categoria atualizada!');
+      } else {
+        cats.push({ slug, name });
+        toast('✅ Categoria criada!');
+      }
+      saveCategories(cats);
+      closeCatModal();
+      refreshCatsPage();
+      // Rebuild filter select if on products page
+      buildCatFilter();
+    }
+
+    // ── confirm delete category
+    function confirmDeleteCat(slug) {
+      const cats  = getCategories();
+      const cat   = cats.find(c => c.slug === slug);
+      const count = products.filter(p => p.category === slug).length;
+
+      document.getElementById('confirm-icon').textContent  = '⚠️';
+      document.getElementById('confirm-title').textContent = 'Excluir categoria?';
+      document.getElementById('confirm-sub').textContent   = count > 0
+        ? `"${cat?.name}" possui ${count} produto${count!==1?'s':''} vinculado${count!==1?'s':''}. Os produtos ficarão sem categoria.`
+        : `"${cat?.name}" será removida permanentemente.`;
+      confirmCb = () => {
+        saveCategories(cats.filter(c => c.slug !== slug));
+        toast('🗑️ Categoria excluída.');
+        closeConfirm();
+        refreshCatsPage();
+        buildCatFilter();
+      };
+      document.getElementById('confirm-modal').classList.add('open');
+    }
+
+    // ── CONFIRM GENERIC
     function closeConfirm() {
       document.getElementById('confirm-modal').classList.remove('open');
-      deleteTargetId = null;
+      confirmCb = null;
     }
 
-    function confirmDelete() {
-      products = products.filter(p => p.id !== deleteTargetId);
-      saveProducts(products);
-      closeConfirm();
-      toast('🗑️ Produto excluído.');
-      refreshProductsData();
+    // ════════════════════════════════════
+    // CONFIG PAGE
+    // ════════════════════════════════════
+    function renderConfigPage() {
+      const wpp = localStorage.getItem('cc_whatsapp') || '5551831618780';
+      document.getElementById('main-content').innerHTML = `
+        <div class="page-header">
+          <div><div class="page-title">Configurações</div><div class="page-sub">Ajustes gerais da loja</div></div>
+        </div>
+        <div style="max-width:480px;display:flex;flex-direction:column;gap:1.3rem;">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
+            <div style="font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;">WhatsApp</div>
+            <div class="field">
+              <label>Número (DDI+DDD+número, sem espaços)</label>
+              <input type="text" id="cfg-wpp" placeholder="5551831618780" value="${esc(wpp)}" />
+            </div>
+            <button class="btn btn-gold" style="align-self:flex-start" id="btn-save-config">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Salvar
+            </button>
+          </div>
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
+            <div style="font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;">Dados</div>
+            <p style="color:var(--muted);font-size:.85rem;line-height:1.6;">Exporte os produtos como JSON para backup ou migração.</p>
+            <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
+              <button class="btn btn-green" id="btn-export">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Exportar JSON
+              </button>
+              <button class="btn btn-danger" id="btn-reset">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+                Resetar Produtos
+              </button>
+            </div>
+          </div>
+        </div>`;
+
+      document.getElementById('btn-save-config').addEventListener('click', () => {
+        localStorage.setItem('cc_whatsapp', document.getElementById('cfg-wpp').value.trim());
+        toast('✅ Configurações salvas!');
+      });
+      document.getElementById('btn-export').addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(products, null, 2)], { type:'application/json' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = 'casual-calcados-produtos.json'; a.click(); URL.revokeObjectURL(a.href);
+      });
+      document.getElementById('btn-reset').addEventListener('click', () => {
+        if (!confirm('Resetar todos os produtos para o catálogo padrão?')) return;
+        localStorage.removeItem('cc_products');
+        products = getProducts();
+        toast('♻️ Produtos resetados.');
+        renderPage();
+      });
     }
 
-    // ── CONFIG ACTIONS
-    function exportJSON() {
-      const blob = new Blob([JSON.stringify(products, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'casual-calcados-produtos.json';
-      a.click();
-      URL.revokeObjectURL(a.href);
-    }
-
-    function resetProducts() {
-      if (!confirm('Tem certeza? Todos os produtos serão revertidos para o catálogo padrão.')) return;
-      localStorage.removeItem('cc_products');
-      products = getProducts();
-      toast('♻️ Produtos resetados para o padrão.');
-      renderPage();
-    }
-
-    // ── ESCAPE HTML
-    function esc(str) {
-      if (!str) return '';
-      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-
-    // ── BOOT: wire persistent events
+    // ════════════════════════════════════
+    // BOOT — wire static events
+    // ════════════════════════════════════
     document.getElementById('login-btn').addEventListener('click', doLogin);
-    document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+    document.getElementById('login-pass').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 
     function doLogin() {
       const u = document.getElementById('login-user').value.trim();
@@ -778,39 +962,58 @@
       document.getElementById('admin-screen').classList.remove('visible');
       document.getElementById('login-screen').style.display = 'flex';
       document.getElementById('login-pass').value = '';
-      // reset products page so it rebuilds on next login
       document.getElementById('main-content').innerHTML = '';
     });
 
-    document.getElementById('modal-close-btn').addEventListener('click', closeModal);
-    document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
-    document.getElementById('modal-save-btn').addEventListener('click', saveModal);
-    document.getElementById('confirm-cancel').addEventListener('click', closeConfirm);
-    document.getElementById('confirm-ok').addEventListener('click', confirmDelete);
-
+    // Product modal
+    document.getElementById('modal-close-btn').addEventListener('click', closeProductModal);
+    document.getElementById('modal-cancel-btn').addEventListener('click', closeProductModal);
+    document.getElementById('modal-save-btn').addEventListener('click', saveProductModal);
     document.getElementById('product-modal').addEventListener('click', e => {
-      if (e.target === document.getElementById('product-modal')) closeModal();
+      if (e.target === document.getElementById('product-modal')) closeProductModal();
     });
-    document.getElementById('confirm-modal').addEventListener('click', e => {
-      if (e.target === document.getElementById('confirm-modal')) closeConfirm();
-    });
-
     document.getElementById('form-img').addEventListener('input', function() {
       const prev = document.getElementById('form-img-preview');
       if (this.value) { prev.src = this.value; prev.classList.add('show'); }
       else prev.classList.remove('show');
     });
 
+    // Category modal
+    document.getElementById('cat-modal-close').addEventListener('click', closeCatModal);
+    document.getElementById('cat-modal-cancel').addEventListener('click', closeCatModal);
+    document.getElementById('cat-modal-save').addEventListener('click', saveCatModal);
+    document.getElementById('cat-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('cat-modal')) closeCatModal();
+    });
+    // Auto-generate slug from name input
+    document.getElementById('cat-form-name').addEventListener('input', function() {
+      const slugField = document.getElementById('cat-form-slug');
+      const original  = document.getElementById('cat-form-original-slug').value;
+      // Auto-fill only when adding new OR when slug still matches auto-gen
+      const prevAuto  = slugify(original || '');
+      if (!original || slugField.value === prevAuto) {
+        slugField.value = slugify(this.value);
+      }
+    });
+
+    // Confirm dialog
+    document.getElementById('confirm-cancel').addEventListener('click', closeConfirm);
+    document.getElementById('confirm-ok').addEventListener('click', () => { if(confirmCb) confirmCb(); });
+    document.getElementById('confirm-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('confirm-modal')) closeConfirm();
+    });
+
+    // Sidebar
     document.querySelectorAll('#sidebar .sidebar-btn[data-page]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        currentPage = btn.dataset.page;
-        // Clear products-page so it rebuilds correctly when switching back
-        if (currentPage !== 'produtos') {
-          const pp = document.getElementById('products-page');
-          if (pp) pp.remove();
-        }
-        renderPage();
-      });
+      btn.addEventListener('click', () => { currentPage = btn.dataset.page; renderPage(); });
+    });
+
+    // Escape closes any open modal
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Escape') return;
+      if (document.getElementById('product-modal').classList.contains('open')) closeProductModal();
+      if (document.getElementById('cat-modal').classList.contains('open')) closeCatModal();
+      if (document.getElementById('confirm-modal').classList.contains('open')) closeConfirm();
     });
   </script>
 </body>
