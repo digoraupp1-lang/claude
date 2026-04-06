@@ -889,7 +889,7 @@
     // CONFIG PAGE
     // ════════════════════════════════════
     function renderConfigPage() {
-      const wpp = localStorage.getItem('cc_whatsapp') || '5551831618780';
+      const wpp = localStorage.getItem('cc_whatsapp') || '555183161878';
       document.getElementById('main-content').innerHTML = `
         <div class="page-header">
           <div><div class="page-title">Configurações</div><div class="page-sub">Ajustes gerais da loja</div></div>
@@ -899,7 +899,7 @@
             <div style="font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;">WhatsApp</div>
             <div class="field">
               <label>Número (DDI+DDD+número, sem espaços)</label>
-              <input type="text" id="cfg-wpp" placeholder="5551831618780" value="${esc(wpp)}" />
+              <input type="text" id="cfg-wpp" placeholder="555183161878" value="${esc(wpp)}" />
             </div>
             <button class="btn btn-gold" style="align-self:flex-start" id="btn-save-config">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
