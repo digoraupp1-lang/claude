@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin — Casual Calçados</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --black: #0a0a0a; --off-black: #111111; --dark: #1a1a1a; --card: #161616;
+      --border: #272727; --border2: #333; --white: #f5f5f0; --off-white: #e0e0da;
+      --muted: #777770; --accent: #c8a96e; --accent-light: #dfc18e;
+      --promo: #e05252; --green: #4caf7d; --radius: 6px; --radius-lg: 12px;
+      --t: 0.22s cubic-bezier(.4,0,.2,1);
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--black); color: var(--white); min-height: 100vh; }
+
+    /* LOGIN */
+    #login-screen {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+      background: radial-gradient(ellipse 60% 50% at 50% 40%, rgba(200,169,110,0.07) 0%, transparent 70%);
+    }
+    .login-box {
+      width: 100%; max-width: 380px; background: var(--off-black);
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 2.5rem 2rem; display: flex; flex-direction: column; gap: 1.4rem;
+    }
+    .login-logo { text-align: center; }
+    .login-logo h1 { font-family: 'Playfair Display', serif; font-size: 1.7rem; font-weight: 900; }
+    .login-logo h1 span { color: var(--accent); }
+    .login-logo p { color: var(--muted); font-size: 0.82rem; margin-top: 0.3rem; letter-spacing: 0.12em; text-transform: uppercase; }
+    .field { display: flex; flex-direction: column; gap: 0.45rem; }
+    .field label { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+    .field input, .field select, .field textarea {
+      background: var(--dark); border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--white); font-family: 'DM Sans', sans-serif; font-size: 0.9rem;
+      padding: 0.7rem 0.9rem; outline: none; transition: border-color var(--t); width: 100%;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+    .field select option { background: var(--dark); }
+    .login-error {
+      background: rgba(224,82,82,0.12); border: 1px solid rgba(224,82,82,0.3);
+      color: var(--promo); font-size: 0.82rem; padding: 0.6rem 0.9rem;
+      border-radius: var(--radius); display: none;
+    }
+    .login-error.show { display: block; }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
+      font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 0.87rem;
+      padding: 0.7rem 1.3rem; border-radius: var(--radius); border: none;
+      cursor: pointer; letter-spacing: 0.03em; transition: all var(--t); white-space: nowrap;
+    }
+    .btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .btn-gold { background: var(--accent); color: var(--black); }
+    .btn-gold:hover { background: var(--accent-light); transform: translateY(-1px); }
+    .btn-outline { background: transparent; color: var(--muted); border: 1px solid var(--border2); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-danger { background: rgba(224,82,82,0.12); color: var(--promo); border: 1px solid rgba(224,82,82,0.25); }
+    .btn-danger:hover { background: rgba(224,82,82,0.22); }
+    .btn-green { background: rgba(76,175,125,0.12); color: var(--green); border: 1px solid rgba(76,175,125,0.25); }
+    .btn-green:hover { background: rgba(76,175,125,0.22); }
+    .btn-full { width: 100%; }
+    .btn-sm { padding: 0.45rem 0.9rem; font-size: 0.8rem; }
+
+    /* ADMIN LAYOUT */
+    #admin-screen { display: none; min-height: 100vh; }
+    #admin-screen.visible { display: flex; flex-direction: column; }
+    .admin-layout { display: flex; flex: 1; min-height: calc(100vh - 64px); }
+
+    /* TOPBAR */
+    .topbar {
+      height: 64px; display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1.5rem; background: rgba(10,10,10,0.97);
+      border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 50;
+    }
+    .topbar-logo { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 900; }
+    .topbar-logo span { color: var(--accent); }
+    .topbar-logo small {
+      display: inline-block; margin-left: 0.6rem; font-family: 'DM Sans', sans-serif;
+      font-size: 0.65rem; font-weight: 600; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--muted); vertical-align: middle;
+    }
+    .topbar-right { display: flex; align-items: center; gap: 0.7rem; }
+    .admin-badge {
+      font-size: 0.68rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--accent); background: rgba(200,169,110,0.1); border: 1px solid rgba(200,169,110,0.2);
+      padding: 0.25rem 0.7rem; border-radius: 100px;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: 220px; flex-shrink: 0; background: var(--off-black);
+      border-right: 1px solid var(--border); padding: 1.5rem 1rem;
+      display: flex; flex-direction: column; gap: 0.3rem;
+    }
+    .sidebar-section {
+      font-size: 0.63rem; font-weight: 600; letter-spacing: 0.16em; text-transform: uppercase;
+      color: var(--muted); padding: 0.3rem 0.6rem; margin-top: 0.8rem; margin-bottom: 0.1rem;
+    }
+    .sidebar-btn {
+      display: flex; align-items: center; gap: 0.6rem; width: 100%; background: none;
+      border: none; cursor: pointer; color: var(--muted); font-family: 'DM Sans', sans-serif;
+      font-size: 0.86rem; font-weight: 500; padding: 0.6rem 0.8rem;
+      border-radius: var(--radius); transition: all var(--t); text-align: left;
+    }
+    .sidebar-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .sidebar-btn:hover { background: var(--dark); color: var(--white); }
+    .sidebar-btn.active { background: rgba(200,169,110,0.1); color: var(--accent); }
+
+    /* MAIN */
+    .main-content { flex: 1; overflow-y: auto; padding: 2rem 1.5rem; }
+
+    /* PAGE HEADER */
+    .page-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.8rem; gap: 1rem; flex-wrap: wrap;
+    }
+    .page-title { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; }
+    .page-sub { color: var(--muted); font-size: 0.82rem; margin-top: 0.2rem; }
+
+    /* STATS */
+    .stats-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.2rem 1.3rem; }
+    .stat-card-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.5rem; }
+    .stat-card-value { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 700; }
+    .stat-card-value.gold { color: var(--accent); }
+    .stat-card-value.green { color: var(--green); }
+    .stat-card-value.red { color: var(--promo); }
+
+    /* TOOLBAR — persistent, not re-rendered */
+    .toolbar { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+    .search-wrap { position: relative; flex: 1; min-width: 200px; }
+    .search-wrap svg { position: absolute; left: 0.8rem; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; color: var(--muted); pointer-events: none; }
+    .search-wrap input {
+      width: 100%; background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--white); font-family: 'DM Sans', sans-serif;
+      font-size: 0.88rem; padding: 0.65rem 0.9rem 0.65rem 2.4rem;
+      outline: none; transition: border-color var(--t);
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
+    .search-wrap input::placeholder { color: var(--muted); }
+    #filter-cat-select {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--white); font-family: 'DM Sans', sans-serif; font-size: .87rem;
+      padding: .65rem .9rem; outline: none; cursor: pointer;
+    }
+
+    /* TABLE */
+    .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { border-bottom: 1px solid var(--border); }
+    thead th { text-align: left; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); padding: 0.9rem 1rem; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background var(--t); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.02); }
+    tbody td { padding: 0.85rem 1rem; font-size: 0.87rem; vertical-align: middle; }
+    .td-img { width: 48px; height: 48px; border-radius: var(--radius); object-fit: cover; background: var(--dark); flex-shrink: 0; }
+    .td-img-wrap { display: flex; align-items: center; gap: 0.8rem; }
+    .td-name { font-weight: 600; }
+    .td-cat { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); background: var(--dark); padding: 0.2rem 0.6rem; border-radius: 100px; display: inline-block; }
+    .td-price { font-weight: 700; color: var(--accent); }
+    .td-price-old { font-size: 0.75rem; color: var(--muted); text-decoration: line-through; margin-left: 0.3rem; }
+    .td-sizes { font-size: 0.78rem; color: var(--muted); max-width: 160px; }
+    .td-badge { font-size: 0.65rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 0.2rem 0.6rem; border-radius: 100px; }
+    .badge-promo { background: rgba(224,82,82,0.15); color: var(--promo); }
+    .badge-novo { background: rgba(200,169,110,0.15); color: var(--accent); }
+    .badge-none { color: var(--muted); font-size: 0.72rem; }
+    .td-actions { display: flex; gap: 0.4rem; align-items: center; }
+    .empty-state { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+    .empty-state strong { display: block; color: var(--off-white); font-size: 1rem; margin-bottom: 0.3rem; }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center; padding: 1rem;
+      opacity: 0; pointer-events: none; transition: opacity var(--t);
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--off-black); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); width: 100%; max-width: 560px;
+      max-height: 90vh; overflow-y: auto;
+      transform: translateY(20px); transition: transform var(--t);
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 1.3rem 1.5rem; border-bottom: 1px solid var(--border); }
+    .modal-title { font-family: 'Playfair Display', serif; font-size: 1.15rem; font-weight: 700; }
+    .modal-close {
+      width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+      background: var(--dark); border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--muted); cursor: pointer; font-size: 1.1rem; transition: all var(--t);
+    }
+    .modal-close:hover { border-color: var(--promo); color: var(--promo); }
+    .modal-body { padding: 1.5rem; display: flex; flex-direction: column; gap: 1.1rem; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 0.7rem; padding: 1.1rem 1.5rem; border-top: 1px solid var(--border); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    /* SIZE PICKER */
+    .size-picker-wrap { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem; }
+    .size-chip {
+      width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;
+      background: var(--dark); border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--muted); font-size: 0.78rem; font-weight: 500;
+      cursor: pointer; transition: all var(--t); user-select: none;
+    }
+    .size-chip:hover { border-color: var(--accent); color: var(--accent); }
+    .size-chip.on { background: var(--accent); border-color: var(--accent); color: var(--black); font-weight: 700; }
+    .size-hint { font-size: 0.73rem; color: var(--muted); margin-top: 0.3rem; }
+
+    /* IMG PREVIEW */
+    .img-preview { width: 100%; height: 160px; border-radius: var(--radius); object-fit: cover; background: var(--dark); border: 1px solid var(--border); margin-top: 0.5rem; display: none; }
+    .img-preview.show { display: block; }
+
+    /* DELETE CONFIRM */
+    .confirm-overlay {
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.8); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center; padding: 1rem;
+      opacity: 0; pointer-events: none; transition: opacity var(--t);
+    }
+    .confirm-overlay.open { opacity: 1; pointer-events: all; }
+    .confirm-box {
+      background: var(--off-black); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 2rem 1.8rem;
+      max-width: 360px; width: 100%; text-align: center;
+      transform: scale(0.95); transition: transform var(--t);
+    }
+    .confirm-overlay.open .confirm-box { transform: scale(1); }
+    .confirm-icon { font-size: 2.5rem; margin-bottom: 0.8rem; }
+    .confirm-title { font-family: 'Playfair Display', serif; font-size: 1.2rem; margin-bottom: 0.5rem; }
+    .confirm-sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; line-height: 1.5; }
+    .confirm-actions { display: flex; gap: 0.7rem; justify-content: center; }
+
+    /* TOAST */
+    .toast {
+      position: fixed; bottom: 1.5rem; left: 50%;
+      transform: translateX(-50%) translateY(120%);
+      background: var(--dark); border: 1px solid var(--border2);
+      color: var(--white); padding: 0.65rem 1.4rem;
+      border-radius: 100px; font-size: 0.83rem; font-weight: 500;
+      z-index: 999; transition: transform 0.3s ease; white-space: nowrap; pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 700px) {
+      .sidebar { display: none; }
+      .form-row { grid-template-columns: 1fr; }
+      thead th:nth-child(3), thead th:nth-child(4), thead th:nth-child(5) { display: none; }
+      tbody td:nth-child(3), tbody td:nth-child(4), tbody td:nth-child(5) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LOGIN -->
+  <div id="login-screen">
+    <div class="login-box">
+      <div class="login-logo">
+        <h1>Casual <span>Calçados</span></h1>
+        <p>Área Administrativa</p>
+      </div>
+      <div class="field">
+        <label>Usuário</label>
+        <input type="text" id="login-user" placeholder="admin" autocomplete="username" />
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+      <div class="login-error" id="login-error">Usuário ou senha incorretos.</div>
+      <button class="btn btn-gold btn-full" id="login-btn" style="padding:.85rem">Entrar</button>
+      <p style="font-size:.74rem;color:var(--muted);text-align:center;">
+        Padrão: admin / admin123<br>
+        <em style="color:rgba(200,169,110,.6)">Altere no código antes de publicar</em>
+      </p>
+    </div>
+  </div>
+
+  <!-- ADMIN -->
+  <div id="admin-screen">
+    <div class="topbar">
+      <div class="topbar-logo">Casual <span>Calçados</span><small>Admin</small></div>
+      <div class="topbar-right">
+        <span class="admin-badge">● Logado</span>
+        <a href="index.html" target="_blank" class="btn btn-outline btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Ver Site
+        </a>
+        <button class="btn btn-outline btn-sm" id="logout-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Sair
+        </button>
+      </div>
+    </div>
+
+    <div class="admin-layout">
+      <nav class="sidebar" id="sidebar">
+        <div class="sidebar-section">Menu</div>
+        <button class="sidebar-btn active" data-page="produtos">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          Produtos
+        </button>
+        <button class="sidebar-btn" data-page="config">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
+          Configurações
+        </button>
+      </nav>
+
+      <main class="main-content" id="main-content"></main>
+    </div>
+  </div>
+
+  <!-- PRODUCT MODAL -->
+  <div class="modal-overlay" id="product-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title" id="modal-title">Novo Produto</div>
+        <button class="modal-close" id="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="form-id" />
+        <div class="field">
+          <label>Nome do Produto *</label>
+          <input type="text" id="form-name" placeholder="Ex: Tênis Urban Runner" />
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Categoria *</label>
+            <select id="form-category">
+              <option value="">Selecione...</option>
+              <option value="masculino">Masculino</option>
+              <option value="feminino">Feminino</option>
+              <option value="infantil">Infantil</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Badge / Destaque</label>
+            <select id="form-badge">
+              <option value="">Nenhum</option>
+              <option value="novo">🆕 Novo</option>
+              <option value="promo">🔥 Promoção</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Preço (R$) *</label>
+            <input type="number" id="form-price" placeholder="0.00" min="0" step="0.01" />
+          </div>
+          <div class="field">
+            <label>Preço Antigo (R$)</label>
+            <input type="number" id="form-old-price" placeholder="Deixe vazio se não houver" min="0" step="0.01" />
+          </div>
+        </div>
+        <div class="field">
+          <label>URL da Foto *</label>
+          <input type="url" id="form-img" placeholder="https://..." />
+          <img class="img-preview" id="form-img-preview" src="" alt="Preview" />
+        </div>
+        <div class="field">
+          <label>Tamanhos Disponíveis *</label>
+          <div class="size-picker-wrap" id="size-picker"></div>
+          <div class="size-hint">Clique para selecionar/desselecionar</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="modal-cancel-btn">Cancelar</button>
+        <button class="btn btn-gold" id="modal-save-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Salvar Produto
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DELETE CONFIRM -->
+  <div class="confirm-overlay" id="confirm-modal">
+    <div class="confirm-box">
+      <div class="confirm-icon">🗑️</div>
+      <div class="confirm-title">Excluir produto?</div>
+      <div class="confirm-sub" id="confirm-sub">Esta ação não pode ser desfeita.</div>
+      <div class="confirm-actions">
+        <button class="btn btn-outline" id="confirm-cancel">Cancelar</button>
+        <button class="btn btn-danger" id="confirm-ok">Sim, excluir</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ── AUTH
+    const ADMIN_USER = 'admin';
+    const ADMIN_PASS = 'admin123'; // ⚠️ troque antes de publicar
+
+    // ── DEFAULT PRODUCTS
+    const DEFAULT_PRODUCTS = [
+      { id:1, name:'Tênis Urban Runner',     category:'masculino', price:189.90, oldPrice:null,   sizes:[38,39,40,41,42,43],       badge:'novo',  img:'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=80' },
+      { id:2, name:'Sapatilha Delicate',     category:'feminino',  price:129.90, oldPrice:179.90, sizes:[35,36,37,38,39,40],       badge:'promo', img:'https://images.unsplash.com/photo-1518049362265-d5b2a6467637?w=600&q=80' },
+      { id:3, name:'Coturno Classic Boot',   category:'masculino', price:259.90, oldPrice:null,   sizes:[39,40,41,42,43],          badge:null,    img:'https://images.unsplash.com/photo-1608256246200-53e635b5b65f?w=600&q=80' },
+      { id:4, name:'Sandália Comfort Slide', category:'feminino',  price:89.90,  oldPrice:119.90, sizes:[35,36,37,38,39],          badge:'promo', img:'https://images.unsplash.com/photo-1603487742131-4160ec999306?w=600&q=80' },
+      { id:5, name:'Tênis Infantil Dino',    category:'infantil',  price:79.90,  oldPrice:null,   sizes:[26,27,28,29,30,31,32,33], badge:'novo',  img:'https://images.unsplash.com/photo-1551107696-a4b0c5a0d9a2?w=600&q=80' },
+      { id:6, name:'Oxford Elegance',        category:'masculino', price:219.90, oldPrice:299.90, sizes:[39,40,41,42,43],          badge:'promo', img:'https://images.unsplash.com/photo-1519415943484-9fa1873496d4?w=600&q=80' },
+      { id:7, name:'Mule Suede Chic',        category:'feminino',  price:149.90, oldPrice:null,   sizes:[35,36,37,38,39,40],       badge:null,    img:'https://images.unsplash.com/photo-1596703263926-eb0762ee17e4?w=600&q=80' },
+      { id:8, name:'Tênis Infantil Star',    category:'infantil',  price:99.90,  oldPrice:129.90, sizes:[28,29,30,31,32,33,34],    badge:'promo', img:'https://images.unsplash.com/photo-1555604733-82b5f0d1d99b?w=600&q=80' },
+    ];
+
+    const ALL_SIZES = [26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44];
+    const CAT_LABEL = { masculino:'Masculino', feminino:'Feminino', infantil:'Infantil' };
+
+    // ── STORAGE
+    function getProducts() {
+      try {
+        const raw = localStorage.getItem('cc_products');
+        return raw ? JSON.parse(raw) : [...DEFAULT_PRODUCTS];
+      } catch { return [...DEFAULT_PRODUCTS]; }
+    }
+    function saveProducts(arr) { localStorage.setItem('cc_products', JSON.stringify(arr)); }
+    function nextId(arr) { return arr.length > 0 ? Math.max(...arr.map(p => p.id)) + 1 : 1; }
+
+    // ── TOAST — FIX: cancel previous timeout to avoid premature hide
+    let toastTimer = null;
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { t.classList.remove('show'); toastTimer = null; }, 2800);
+    }
+
+    const fmt = n => 'R$ ' + Number(n).toFixed(2).replace('.', ',');
+
+    // ── STATE
+    let products = getProducts();
+    let searchQ = '';
+    let filterCat = 'todos';
+    let deleteTargetId = null;
+    let currentPage = 'produtos';
+    let formSizes = new Set();
+
+    // ── SIDEBAR highlight — FIX: targets persistent DOM elements, not innerHTML
+    function updateSidebarActive() {
+      document.querySelectorAll('#sidebar .sidebar-btn[data-page]').forEach(b => {
+        b.classList.toggle('active', b.dataset.page === currentPage);
+      });
+    }
+
+    // ── RENDER PAGES
+    function renderPage() {
+      updateSidebarActive();
+      if (currentPage === 'produtos') renderProductsPage();
+      else if (currentPage === 'config') renderConfigPage();
+    }
+
+    // ── PRODUCTS PAGE
+    // FIX: toolbar (search + filter) lives outside the re-rendered tbody zone
+    // so the input never loses focus. Stats and rows refresh independently.
+    function renderProductsPage() {
+      const content = document.getElementById('main-content');
+
+      // First render: build the static skeleton with persistent toolbar
+      if (!document.getElementById('products-page')) {
+        content.innerHTML = `
+          <div id="products-page">
+            <div class="page-header">
+              <div>
+                <div class="page-title">Produtos</div>
+                <div class="page-sub" id="prod-sub"></div>
+              </div>
+              <button class="btn btn-gold" id="btn-add-product">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Novo Produto
+              </button>
+            </div>
+            <div class="stats-row" id="stats-row"></div>
+            <div class="toolbar">
+              <div class="search-wrap">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input id="search-input" type="text" placeholder="Buscar produto..." />
+              </div>
+              <select id="filter-cat-select">
+                <option value="todos">Todas as categorias</option>
+                <option value="masculino">Masculino</option>
+                <option value="feminino">Feminino</option>
+                <option value="infantil">Infantil</option>
+              </select>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Produto</th><th>Categoria</th><th>Preço</th>
+                    <th>Badge</th><th>Tamanhos</th><th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="products-tbody"></tbody>
+              </table>
+            </div>
+          </div>`;
+
+        // Wire toolbar events once — they survive re-renders
+        document.getElementById('btn-add-product').addEventListener('click', openAddModal);
+        document.getElementById('search-input').addEventListener('input', function() {
+          searchQ = this.value;
+          refreshProductsData();
+        });
+        document.getElementById('filter-cat-select').addEventListener('change', function() {
+          filterCat = this.value;
+          refreshProductsData();
+        });
+      }
+
+      // Sync toolbar values with state (e.g. after switching pages)
+      document.getElementById('search-input').value = searchQ;
+      document.getElementById('filter-cat-select').value = filterCat;
+
+      refreshProductsData();
+    }
+
+    // Only re-renders stats + table rows — toolbar untouched
+    function refreshProductsData() {
+      const total  = products.length;
+      const promos = products.filter(p => p.oldPrice || p.badge === 'promo').length;
+      const cats   = [...new Set(products.map(p => p.category))].length;
+
+      document.getElementById('prod-sub').textContent =
+        `${total} produto${total !== 1 ? 's' : ''} cadastrado${total !== 1 ? 's' : ''}`;
+
+      document.getElementById('stats-row').innerHTML = `
+        <div class="stat-card"><div class="stat-card-label">Total de Produtos</div><div class="stat-card-value gold">${total}</div></div>
+        <div class="stat-card"><div class="stat-card-label">Em Promoção</div><div class="stat-card-value red">${promos}</div></div>
+        <div class="stat-card"><div class="stat-card-label">Categorias</div><div class="stat-card-value">${cats}</div></div>`;
+
+      const filtered = products.filter(p => {
+        const mQ   = !searchQ || p.name.toLowerCase().includes(searchQ.toLowerCase());
+        const mCat = filterCat === 'todos' || p.category === filterCat;
+        return mQ && mCat;
+      });
+
+      const rows = filtered.length === 0
+        ? `<tr><td colspan="6"><div class="empty-state"><strong>Nenhum produto encontrado</strong>Ajuste a busca ou os filtros.</div></td></tr>`
+        : filtered.map(p => `
+          <tr>
+            <td>
+              <div class="td-img-wrap">
+                <img class="td-img" src="${esc(p.img)}" alt="${esc(p.name)}"
+                  onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'48\' height=\'48\'%3E%3Crect fill=\'%231a1a1a\' width=\'48\' height=\'48\'/%3E%3C/svg%3E'" />
+                <span class="td-name">${esc(p.name)}</span>
+              </div>
+            </td>
+            <td><span class="td-cat">${CAT_LABEL[p.category] || p.category}</span></td>
+            <td>
+              <span class="td-price">${fmt(p.price)}</span>
+              ${p.oldPrice ? `<span class="td-price-old">${fmt(p.oldPrice)}</span>` : ''}
+            </td>
+            <td>
+              ${p.badge === 'promo' ? '<span class="td-badge badge-promo">Promoção</span>'
+                : p.badge === 'novo' ? '<span class="td-badge badge-novo">Novo</span>'
+                : '<span class="badge-none">—</span>'}
+            </td>
+            <td><span class="td-sizes">${p.sizes.join(', ')}</span></td>
+            <td>
+              <div class="td-actions">
+                <button class="btn btn-outline btn-sm" data-edit="${p.id}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Editar
+                </button>
+                <button class="btn btn-danger btn-sm" data-delete="${p.id}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                </button>
+              </div>
+            </td>
+          </tr>`).join('');
+
+      const tbody = document.getElementById('products-tbody');
+      tbody.innerHTML = rows;
+
+      // Delegate edit/delete from tbody — no inline onclick, avoids XSS
+      tbody.querySelectorAll('[data-edit]').forEach(btn => {
+        btn.addEventListener('click', () => openEditModal(Number(btn.dataset.edit)));
+      });
+      tbody.querySelectorAll('[data-delete]').forEach(btn => {
+        btn.addEventListener('click', () => openDeleteConfirm(Number(btn.dataset.delete)));
+      });
+    }
+
+    // ── CONFIG PAGE
+    function renderConfigPage() {
+      const wpp = localStorage.getItem('cc_whatsapp') || '5500000000000';
+      document.getElementById('main-content').innerHTML = `
+        <div class="page-header">
+          <div><div class="page-title">Configurações</div><div class="page-sub">Ajustes gerais da loja</div></div>
+        </div>
+        <div style="max-width:480px;display:flex;flex-direction:column;gap:1.3rem;">
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
+            <div style="font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;">WhatsApp</div>
+            <div class="field">
+              <label>Número (com DDI+DDD, sem espaços)</label>
+              <input type="text" id="cfg-wpp" placeholder="5551999887766" value="${esc(wpp)}" />
+            </div>
+            <button class="btn btn-gold" style="align-self:flex-start" id="btn-save-config">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Salvar
+            </button>
+          </div>
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1.5rem;display:flex;flex-direction:column;gap:1rem;">
+            <div style="font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:700;">Dados</div>
+            <p style="color:var(--muted);font-size:.85rem;line-height:1.6;">Exporte os produtos como JSON para backup ou migração para outro dispositivo.</p>
+            <div style="display:flex;gap:.7rem;flex-wrap:wrap;">
+              <button class="btn btn-green" id="btn-export">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Exportar JSON
+              </button>
+              <button class="btn btn-danger" id="btn-reset">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+                Resetar Produtos
+              </button>
+            </div>
+          </div>
+        </div>`;
+
+      document.getElementById('btn-save-config').addEventListener('click', () => {
+        localStorage.setItem('cc_whatsapp', document.getElementById('cfg-wpp').value.trim());
+        toast('✅ Configurações salvas!');
+      });
+      document.getElementById('btn-export').addEventListener('click', exportJSON);
+      document.getElementById('btn-reset').addEventListener('click', resetProducts);
+    }
+
+    // ── MODAL
+    function buildSizePicker() {
+      const wrap = document.getElementById('size-picker');
+      wrap.innerHTML = '';
+      ALL_SIZES.forEach(s => {
+        const chip = document.createElement('div');
+        chip.className = 'size-chip' + (formSizes.has(s) ? ' on' : '');
+        chip.textContent = s;
+        chip.addEventListener('click', () => {
+          formSizes.has(s) ? formSizes.delete(s) : formSizes.add(s);
+          chip.classList.toggle('on');
+        });
+        wrap.appendChild(chip);
+      });
+    }
+
+    function openAddModal() {
+      formSizes = new Set();
+      document.getElementById('form-id').value        = '';
+      document.getElementById('form-name').value      = '';
+      document.getElementById('form-category').value  = '';
+      document.getElementById('form-badge').value     = '';
+      document.getElementById('form-price').value     = '';
+      document.getElementById('form-old-price').value = '';
+      document.getElementById('form-img').value       = '';
+      document.getElementById('form-img-preview').classList.remove('show');
+      document.getElementById('modal-title').textContent = 'Novo Produto';
+      buildSizePicker();
+      document.getElementById('product-modal').classList.add('open');
+    }
+
+    function openEditModal(id) {
+      const p = products.find(x => x.id === id);
+      if (!p) return;
+      formSizes = new Set(p.sizes);
+      document.getElementById('form-id').value        = p.id;
+      document.getElementById('form-name').value      = p.name;
+      document.getElementById('form-category').value  = p.category;
+      document.getElementById('form-badge').value     = p.badge || '';
+      document.getElementById('form-price').value     = p.price;
+      document.getElementById('form-old-price').value = p.oldPrice || '';
+      document.getElementById('form-img').value       = p.img;
+      const prev = document.getElementById('form-img-preview');
+      prev.src = p.img; prev.classList.add('show');
+      document.getElementById('modal-title').textContent = 'Editar Produto';
+      buildSizePicker();
+      document.getElementById('product-modal').classList.add('open');
+    }
+
+    function closeModal() { document.getElementById('product-modal').classList.remove('open'); }
+
+    function saveModal() {
+      const id    = document.getElementById('form-id').value;
+      const name  = document.getElementById('form-name').value.trim();
+      const cat   = document.getElementById('form-category').value;
+      const badge = document.getElementById('form-badge').value || null;
+      const price = parseFloat(document.getElementById('form-price').value);
+      const oldP  = parseFloat(document.getElementById('form-old-price').value) || null;
+      const img   = document.getElementById('form-img').value.trim();
+      const sizes = [...formSizes].sort((a, b) => a - b);
+
+      if (!name || !cat || isNaN(price) || price <= 0 || !img || sizes.length === 0) {
+        toast('⚠️ Preencha todos os campos obrigatórios e selecione pelo menos um tamanho.');
+        return;
+      }
+
+      if (id) {
+        const idx = products.findIndex(p => p.id === Number(id));
+        if (idx > -1) products[idx] = { ...products[idx], name, category: cat, badge, price, oldPrice: oldP, img, sizes };
+        toast('✅ Produto atualizado com sucesso!');
+      } else {
+        products.push({ id: nextId(products), name, category: cat, badge, price, oldPrice: oldP, img, sizes });
+        toast('✅ Produto adicionado com sucesso!');
+      }
+      saveProducts(products);
+      closeModal();
+      refreshProductsData();
+    }
+
+    // ── DELETE
+    function openDeleteConfirm(id) {
+      deleteTargetId = id;
+      const p = products.find(x => x.id === id);
+      document.getElementById('confirm-sub').textContent =
+        `"${p ? p.name : ''}" será removido permanentemente.`;
+      document.getElementById('confirm-modal').classList.add('open');
+    }
+
+    function closeConfirm() {
+      document.getElementById('confirm-modal').classList.remove('open');
+      deleteTargetId = null;
+    }
+
+    function confirmDelete() {
+      products = products.filter(p => p.id !== deleteTargetId);
+      saveProducts(products);
+      closeConfirm();
+      toast('🗑️ Produto excluído.');
+      refreshProductsData();
+    }
+
+    // ── CONFIG ACTIONS
+    function exportJSON() {
+      const blob = new Blob([JSON.stringify(products, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'casual-calcados-produtos.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function resetProducts() {
+      if (!confirm('Tem certeza? Todos os produtos serão revertidos para o catálogo padrão.')) return;
+      localStorage.removeItem('cc_products');
+      products = getProducts();
+      toast('♻️ Produtos resetados para o padrão.');
+      renderPage();
+    }
+
+    // ── ESCAPE HTML
+    function esc(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── BOOT: wire persistent events
+    document.getElementById('login-btn').addEventListener('click', doLogin);
+    document.getElementById('login-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+    function doLogin() {
+      const u = document.getElementById('login-user').value.trim();
+      const p = document.getElementById('login-pass').value;
+      if (u === ADMIN_USER && p === ADMIN_PASS) {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('admin-screen').classList.add('visible');
+        renderPage();
+      } else {
+        document.getElementById('login-error').classList.add('show');
+      }
+    }
+
+    document.getElementById('logout-btn').addEventListener('click', () => {
+      document.getElementById('admin-screen').classList.remove('visible');
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('login-pass').value = '';
+      // reset products page so it rebuilds on next login
+      document.getElementById('main-content').innerHTML = '';
+    });
+
+    document.getElementById('modal-close-btn').addEventListener('click', closeModal);
+    document.getElementById('modal-cancel-btn').addEventListener('click', closeModal);
+    document.getElementById('modal-save-btn').addEventListener('click', saveModal);
+    document.getElementById('confirm-cancel').addEventListener('click', closeConfirm);
+    document.getElementById('confirm-ok').addEventListener('click', confirmDelete);
+
+    document.getElementById('product-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('product-modal')) closeModal();
+    });
+    document.getElementById('confirm-modal').addEventListener('click', e => {
+      if (e.target === document.getElementById('confirm-modal')) closeConfirm();
+    });
+
+    document.getElementById('form-img').addEventListener('input', function() {
+      const prev = document.getElementById('form-img-preview');
+      if (this.value) { prev.src = this.value; prev.classList.add('show'); }
+      else prev.classList.remove('show');
+    });
+
+    document.querySelectorAll('#sidebar .sidebar-btn[data-page]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentPage = btn.dataset.page;
+        // Clear products-page so it rebuilds correctly when switching back
+        if (currentPage !== 'produtos') {
+          const pp = document.getElementById('products-page');
+          if (pp) pp.remove();
+        }
+        renderPage();
+      });
+    });
+  </script>
+</body>
+</html>
