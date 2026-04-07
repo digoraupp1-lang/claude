@@ -828,26 +828,27 @@
         try {
           const data = await mlApiFetch('/items/' + code);
 
-          // ── fotos: API retorna pictures com IDs, monta URL direta do CDN
-          // Formato: https://http2.mlstatic.com/D_NQ_NP_{id}-{suffix}.jpg
-          // Não usamos secure_url pois pode ter restrição — montamos direto pelo picture_id
+          // ── fotos: busca via endpoint dedicado (mais leve, corsproxy não trunca)
+          let picData = [];
+          try {
+            picData = await mlApiFetch('/items/' + code + '/pictures');
+          } catch(_) {}
+
+          // fallback: thumbnail do item
           function picUrl(p) {
-            // Tenta secure_url primeiro, sem alterar o sufixo
             if (p.secure_url) return p.secure_url.replace('http://', 'https://');
             if (p.url)        return p.url.replace('http://', 'https://');
-            // Monta pelo id: formato D_NQ_NP_{id}-O.jpg
             if (p.id)         return `https://http2.mlstatic.com/D_NQ_NP_${p.id}-O.jpg`;
             return '';
           }
 
-          mlPhotos = (data.pictures || []).slice(0, 5).map(picUrl).filter(Boolean);
-
-          // Fallback: thumbnail do item (sempre disponível)
-          if (!mlPhotos.length && data.thumbnail) {
+          if (Array.isArray(picData) && picData.length) {
+            mlPhotos = picData.slice(0, 5).map(picUrl).filter(Boolean);
+          } else if (data.thumbnail) {
             mlPhotos = [data.thumbnail.replace('http://', 'https://')];
           }
 
-          console.log('[ML] pictures raw:', JSON.stringify(data.pictures?.slice(0,2)));
+          console.log('[ML] /pictures:', JSON.stringify(picData?.slice(0,2)));
           console.log('[ML] mlPhotos:', mlPhotos);
 
           selectedPhotos = new Set(mlPhotos.slice(0, 3).map((_, i) => i));
