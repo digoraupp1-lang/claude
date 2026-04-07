@@ -936,7 +936,7 @@
 
   <!-- HEADER -->
   <header>
-    <div class="logo">Casual <span>Calçados</span></div>
+    <div class="logo" id="site-logo">Casual <span>Calçados</span></div>
     <div class="header-right">
       <button class="cart-btn" id="cart-toggle-btn" aria-label="Abrir carrinho">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
@@ -989,17 +989,17 @@
   <!-- HERO -->
   <section class="hero">
     <div class="hero-bg"></div>
-    <div class="hero-eyebrow">Nova Coleção 2025</div>
-    <h1>Estilo que caminha<br><em>com você</em></h1>
-    <p class="hero-sub">Os melhores calçados com preços imperdíveis. Do casual ao elegante, encontre o par perfeito para cada momento.</p>
+    <div class="hero-eyebrow" id="hero-eyebrow">Nova Coleção 2025</div>
+    <h1 id="hero-title">Estilo que caminha<br><em>com você</em></h1>
+    <p class="hero-sub" id="hero-sub">Os melhores calçados com preços imperdíveis. Do casual ao elegante, encontre o par perfeito para cada momento.</p>
     <a href="#produtos" class="btn-primary">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
       Ver Produtos
     </a>
     <div class="hero-stats">
-      <div class="stat"><strong>200+</strong><span>Modelos</span></div>
-      <div class="stat"><strong>5★</strong><span>Avaliação</span></div>
-      <div class="stat"><strong>48h</strong><span>Entrega</span></div>
+      <div class="stat"><strong id="stat1-val">200+</strong><span id="stat1-label">Modelos</span></div>
+      <div class="stat"><strong id="stat2-val">5★</strong><span id="stat2-label">Avaliação</span></div>
+      <div class="stat"><strong id="stat3-val">48h</strong><span id="stat3-label">Entrega</span></div>
     </div>
     <div class="hero-scroll">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 10l5 5 5-5"/></svg>
@@ -1010,10 +1010,10 @@
   <!-- PROMO BANNER -->
   <div class="promo-banner">
     <div class="promo-banner-text">
-      <strong>🔥 Liquidação de Inverno — até 40% OFF</strong>
-      <p>Promoções por tempo limitado. Aproveite enquanto durar o estoque!</p>
+      <strong id="promo-title">🔥 Liquidação de Inverno — até 40% OFF</strong>
+      <p id="promo-sub">Promoções por tempo limitado. Aproveite enquanto durar o estoque!</p>
     </div>
-    <a href="#produtos" class="btn-primary" style="flex-shrink:0;">Ver Promoções</a>
+    <a href="#produtos" class="btn-primary" style="flex-shrink:0;" id="promo-btn">Ver Promoções</a>
   </div>
 
   <!-- SECTION HEADER + FILTERS -->
@@ -1056,9 +1056,9 @@
 
   <!-- FOOTER -->
   <footer>
-    <strong>Casual Calçados</strong><br>
-    Atendimento via WhatsApp · Segunda a Sábado, 9h às 18h<br>
-    © 2025 Casual Calçados — Todos os direitos reservados
+    <strong id="footer-name">Casual Calçados</strong><br>
+    <span id="footer-hours">Atendimento via WhatsApp · Segunda a Sábado, 9h às 18h</span><br>
+    <span id="footer-copy">© 2025 Casual Calçados — Todos os direitos reservados</span>
   </footer>
 
   <!-- TOAST -->
@@ -1067,6 +1067,47 @@
   <script>
     // ── WHATSAPP NUMBER
     const WHATSAPP = localStorage.getItem('cc_whatsapp') || '555183161878';
+
+    // ── SITE CONTENT — carregado do admin (aba Conteúdo)
+    function loadSiteContent() {
+      try {
+        const c = JSON.parse(localStorage.getItem('cc_content') || '{}');
+
+        // Logo
+        if (c.storeName) {
+          const parts = c.storeName.trim().split(' ');
+          const last  = parts.pop();
+          document.getElementById('site-logo').innerHTML = parts.join(' ') + (parts.length ? ' ' : '') + `<span>${last}</span>`;
+          document.title = c.storeName + ' — Estilo que Caminha com Você';
+        }
+
+        // Hero
+        if (c.heroEyebrow) document.getElementById('hero-eyebrow').textContent = c.heroEyebrow;
+        if (c.heroTitle)   document.getElementById('hero-title').innerHTML    = c.heroTitle;
+        if (c.heroSub)     document.getElementById('hero-sub').textContent    = c.heroSub;
+        if (c.stat1Val)    document.getElementById('stat1-val').textContent   = c.stat1Val;
+        if (c.stat1Label)  document.getElementById('stat1-label').textContent = c.stat1Label;
+        if (c.stat2Val)    document.getElementById('stat2-val').textContent   = c.stat2Val;
+        if (c.stat2Label)  document.getElementById('stat2-label').textContent = c.stat2Label;
+        if (c.stat3Val)    document.getElementById('stat3-val').textContent   = c.stat3Val;
+        if (c.stat3Label)  document.getElementById('stat3-label').textContent = c.stat3Label;
+
+        // Promo banner
+        if (c.promoTitle) document.getElementById('promo-title').textContent = c.promoTitle;
+        if (c.promoSub)   document.getElementById('promo-sub').textContent   = c.promoSub;
+        if (c.promoBtnText) document.getElementById('promo-btn').childNodes[document.getElementById('promo-btn').childNodes.length - 1].textContent = ' ' + c.promoBtnText;
+
+        // Footer
+        if (c.footerName)  document.getElementById('footer-name').textContent  = c.footerName  || c.storeName || 'Casual Calçados';
+        if (c.footerHours) document.getElementById('footer-hours').textContent = c.footerHours;
+        if (c.footerCopy)  document.getElementById('footer-copy').textContent  = c.footerCopy;
+
+        // WhatsApp header link
+        const wppLink = document.querySelector('.whatsapp-header');
+        if (wppLink) wppLink.href = `https://wa.me/${WHATSAPP}?text=Olá%2C%20gostaria%20de%20saber%20mais%20sobre%20os%20produtos!`;
+      } catch(e) {}
+    }
+    loadSiteContent();
 
     // ── PRODUCT DATA
     const DEFAULT_PRODUCTS = [

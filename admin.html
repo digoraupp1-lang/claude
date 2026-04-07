@@ -219,6 +219,32 @@
     .img-preview { width: 100%; height: 160px; border-radius: var(--radius); object-fit: cover; background: var(--dark); border: 1px solid var(--border); margin-top: 0.5rem; display: none; }
     .img-preview.show { display: block; }
 
+    /* MULTI PHOTO FIELDS */
+    .img-field-row {
+      display: flex; gap: 0.5rem; align-items: flex-start;
+    }
+    .img-field-row input {
+      flex: 1; background: var(--dark); border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--white);
+      font-family: 'DM Sans', sans-serif; font-size: 0.88rem;
+      padding: 0.65rem 0.9rem; outline: none; transition: border-color var(--t);
+    }
+    .img-field-row input:focus { border-color: var(--accent); }
+    .img-field-row input::placeholder { color: var(--muted); }
+    .img-field-thumb {
+      width: 44px; height: 44px; border-radius: var(--radius);
+      object-fit: cover; background: var(--dark); border: 1px solid var(--border);
+      flex-shrink: 0; display: none;
+    }
+    .img-field-thumb.show { display: block; }
+    .img-field-remove {
+      width: 32px; height: 44px; display: flex; align-items: center; justify-content: center;
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      border-radius: var(--radius); transition: color var(--t); flex-shrink: 0;
+    }
+    .img-field-remove:hover { color: var(--promo); }
+    .img-field-remove svg { width: 14px; height: 14px; }
+
     /* CONFIRM MODAL */
     .confirm-overlay {
       position: fixed; inset: 0; z-index: 300;
@@ -255,6 +281,28 @@
     .cat-default-badge { font-size: 0.62rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--border); padding: 0.15rem 0.5rem; border-radius: 100px; }
     .cat-actions { display: flex; gap: 0.4rem; }
     .cat-modal-inner { max-width: 420px; }
+
+    /* CONTENT PAGE */
+    .content-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1.4rem 1.5rem;
+      display: flex; flex-direction: column; gap: 1rem;
+    }
+    .content-card-title {
+      display: flex; align-items: center; gap: 0.5rem;
+      font-family: 'Playfair Display', serif; font-size: 0.95rem; font-weight: 700;
+      color: var(--off-white); margin-bottom: 0.1rem;
+    }
+    .content-card-title svg { width: 15px; height: 15px; color: var(--accent); flex-shrink: 0; }
+    .field-hint { font-size: .72rem; color: var(--muted); margin-top: .3rem; display: block; line-height: 1.5; }
+    .field textarea {
+      background: var(--dark); border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--white); font-family: 'DM Sans', sans-serif; font-size: 0.88rem;
+      padding: 0.7rem 0.9rem; outline: none; transition: border-color var(--t);
+      width: 100%; resize: vertical;
+    }
+    .field textarea:focus { border-color: var(--accent); }
+    .form-row3 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; }
 
     /* TOAST */
     .toast {
@@ -329,6 +377,10 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
           Categorias
         </button>
+        <button class="sidebar-btn" data-page="conteudo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Conteúdo
+        </button>
         <button class="sidebar-btn" data-page="config">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/></svg>
           Configurações
@@ -376,9 +428,13 @@
           </div>
         </div>
         <div class="field">
-          <label>URL da Foto *</label>
-          <input type="url" id="form-img" placeholder="https://..." />
-          <img class="img-preview" id="form-img-preview" src="" alt="Preview" />
+          <label>Fotos do Produto * (até 3)</label>
+          <div id="img-fields" style="display:flex;flex-direction:column;gap:0.6rem;margin-top:0.2rem;"></div>
+          <button type="button" class="btn btn-outline btn-sm" id="btn-add-img-field" style="margin-top:0.5rem;align-self:flex-start;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:13px;height:13px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Adicionar foto
+          </button>
+          <span style="font-size:.72rem;color:var(--muted);margin-top:.3rem;display:block;">A primeira foto é a principal exibida no card.</span>
         </div>
         <div class="field">
           <label>Tamanhos Disponíveis *</label>
@@ -517,14 +573,144 @@
     function renderPage() {
       updateSidebarActive();
       const mc = document.getElementById('main-content');
-      // clear non-persistent pages
       if (currentPage !== 'produtos') {
         const pp = document.getElementById('products-page');
         if (pp) pp.remove();
       }
       if      (currentPage === 'produtos')   renderProductsPage();
       else if (currentPage === 'categorias') renderCategoriesPage();
+      else if (currentPage === 'conteudo')   renderConteudoPage();
       else if (currentPage === 'config')     renderConfigPage();
+    }
+
+    // ════════════════════════════════════
+    // CONTEÚDO PAGE
+    // ════════════════════════════════════
+    function getContent() {
+      try { return JSON.parse(localStorage.getItem('cc_content') || '{}'); } catch { return {}; }
+    }
+    function saveContent(obj) { localStorage.setItem('cc_content', JSON.stringify(obj)); }
+
+    function renderConteudoPage() {
+      const c = getContent();
+      document.getElementById('main-content').innerHTML = `
+        <div class="page-header">
+          <div><div class="page-title">Conteúdo do Site</div><div class="page-sub">Textos exibidos no site para os clientes</div></div>
+          <button class="btn btn-gold" id="btn-save-content">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Salvar Tudo
+          </button>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:1.3rem;max-width:680px;">
+
+          <!-- GERAL -->
+          <div class="content-card">
+            <div class="content-card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+              Geral
+            </div>
+            <div class="field">
+              <label>Nome da Loja</label>
+              <input type="text" id="c-storeName" placeholder="Casual Calçados" value="${esc(c.storeName||'Casual Calçados')}" />
+              <span class="field-hint">A última palavra fica destacada em dourado no logo.</span>
+            </div>
+          </div>
+
+          <!-- HERO -->
+          <div class="content-card">
+            <div class="content-card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+              Seção Principal (Hero)
+            </div>
+            <div class="field">
+              <label>Texto acima do título</label>
+              <input type="text" id="c-heroEyebrow" placeholder="Nova Coleção 2025" value="${esc(c.heroEyebrow||'Nova Coleção 2025')}" />
+            </div>
+            <div class="field">
+              <label>Título</label>
+              <input type="text" id="c-heroTitle" placeholder="Estilo que caminha com você" value="${esc(c.heroTitle||'Estilo que caminha<br><em>com você</em>')}" />
+              <span class="field-hint">Use &lt;br&gt; para quebra de linha e &lt;em&gt;palavra&lt;/em&gt; para itálico dourado.</span>
+            </div>
+            <div class="field">
+              <label>Subtítulo</label>
+              <textarea id="c-heroSub" rows="2" placeholder="Os melhores calçados...">${esc(c.heroSub||'Os melhores calçados com preços imperdíveis. Do casual ao elegante, encontre o par perfeito para cada momento.')}</textarea>
+            </div>
+            <div class="content-card-title" style="font-size:.75rem;margin-top:.5rem;">Estatísticas</div>
+            <div class="form-row3">
+              <div class="field"><label>Valor 1</label><input type="text" id="c-stat1Val" placeholder="200+" value="${esc(c.stat1Val||'200+')}" /></div>
+              <div class="field"><label>Legenda 1</label><input type="text" id="c-stat1Label" placeholder="Modelos" value="${esc(c.stat1Label||'Modelos')}" /></div>
+            </div>
+            <div class="form-row3">
+              <div class="field"><label>Valor 2</label><input type="text" id="c-stat2Val" placeholder="5★" value="${esc(c.stat2Val||'5★')}" /></div>
+              <div class="field"><label>Legenda 2</label><input type="text" id="c-stat2Label" placeholder="Avaliação" value="${esc(c.stat2Label||'Avaliação')}" /></div>
+            </div>
+            <div class="form-row3">
+              <div class="field"><label>Valor 3</label><input type="text" id="c-stat3Val" placeholder="48h" value="${esc(c.stat3Val||'48h')}" /></div>
+              <div class="field"><label>Legenda 3</label><input type="text" id="c-stat3Label" placeholder="Entrega" value="${esc(c.stat3Label||'Entrega')}" /></div>
+            </div>
+          </div>
+
+          <!-- BANNER PROMO -->
+          <div class="content-card">
+            <div class="content-card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+              Banner de Promoção
+            </div>
+            <div class="field">
+              <label>Título do Banner</label>
+              <input type="text" id="c-promoTitle" placeholder="🔥 Liquidação de Inverno — até 40% OFF" value="${esc(c.promoTitle||'🔥 Liquidação de Inverno — até 40% OFF')}" />
+            </div>
+            <div class="field">
+              <label>Subtítulo do Banner</label>
+              <input type="text" id="c-promoSub" placeholder="Promoções por tempo limitado." value="${esc(c.promoSub||'Promoções por tempo limitado. Aproveite enquanto durar o estoque!')}" />
+            </div>
+            <div class="field">
+              <label>Texto do Botão</label>
+              <input type="text" id="c-promoBtnText" placeholder="Ver Promoções" value="${esc(c.promoBtnText||'Ver Promoções')}" />
+            </div>
+          </div>
+
+          <!-- RODAPÉ -->
+          <div class="content-card">
+            <div class="content-card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+              Rodapé
+            </div>
+            <div class="field">
+              <label>Horário de Atendimento</label>
+              <input type="text" id="c-footerHours" placeholder="Atendimento via WhatsApp · Segunda a Sábado, 9h às 18h" value="${esc(c.footerHours||'Atendimento via WhatsApp · Segunda a Sábado, 9h às 18h')}" />
+            </div>
+            <div class="field">
+              <label>Texto de Copyright</label>
+              <input type="text" id="c-footerCopy" placeholder="© 2025 Casual Calçados — Todos os direitos reservados" value="${esc(c.footerCopy||'© 2025 Casual Calçados — Todos os direitos reservados')}" />
+            </div>
+          </div>
+
+        </div>`;
+
+      document.getElementById('btn-save-content').addEventListener('click', () => {
+        const updated = {
+          storeName:    document.getElementById('c-storeName').value.trim(),
+          heroEyebrow:  document.getElementById('c-heroEyebrow').value.trim(),
+          heroTitle:    document.getElementById('c-heroTitle').value.trim(),
+          heroSub:      document.getElementById('c-heroSub').value.trim(),
+          stat1Val:     document.getElementById('c-stat1Val').value.trim(),
+          stat1Label:   document.getElementById('c-stat1Label').value.trim(),
+          stat2Val:     document.getElementById('c-stat2Val').value.trim(),
+          stat2Label:   document.getElementById('c-stat2Label').value.trim(),
+          stat3Val:     document.getElementById('c-stat3Val').value.trim(),
+          stat3Label:   document.getElementById('c-stat3Label').value.trim(),
+          promoTitle:   document.getElementById('c-promoTitle').value.trim(),
+          promoSub:     document.getElementById('c-promoSub').value.trim(),
+          promoBtnText: document.getElementById('c-promoBtnText').value.trim(),
+          footerHours:  document.getElementById('c-footerHours').value.trim(),
+          footerCopy:   document.getElementById('c-footerCopy').value.trim(),
+          footerName:   document.getElementById('c-storeName').value.trim(),
+        };
+        saveContent(updated);
+        toast('✅ Conteúdo salvo! Atualize o site para ver as alterações.');
+      });
     }
 
     // ════════════════════════════════════
@@ -666,6 +852,62 @@
       });
     }
 
+    function buildImgFields(urlList) {
+      const container = document.getElementById('img-fields');
+      container.innerHTML = '';
+      const urls = urlList && urlList.length ? urlList : [''];
+      urls.forEach((url, idx) => addImgFieldRow(url, idx));
+      updateAddImgBtn();
+    }
+
+    function addImgFieldRow(url, idx) {
+      const container = document.getElementById('img-fields');
+      const row = document.createElement('div');
+      row.className = 'img-field-row';
+      row.dataset.idx = idx;
+
+      const label = idx === 0 ? ' placeholder="Foto principal (obrigatória) https://..."' : ' placeholder="Foto extra https://..."';
+      row.innerHTML = `
+        <img class="img-field-thumb${url?' show':''}" src="${url||''}" alt="preview" />
+        <input type="url"${label} value="${url||''}" />
+        ${idx > 0 ? `<button type="button" class="img-field-remove" title="Remover foto">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>` : ''}`;
+
+      const input = row.querySelector('input');
+      const thumb = row.querySelector('img');
+      input.addEventListener('input', function() {
+        if (this.value) { thumb.src = this.value; thumb.classList.add('show'); }
+        else thumb.classList.remove('show');
+      });
+
+      const removeBtn = row.querySelector('.img-field-remove');
+      if (removeBtn) {
+        removeBtn.addEventListener('click', () => {
+          row.remove();
+          rebuildImgIndexes();
+          updateAddImgBtn();
+        });
+      }
+
+      container.appendChild(row);
+    }
+
+    function rebuildImgIndexes() {
+      document.querySelectorAll('#img-fields .img-field-row').forEach((r, i) => { r.dataset.idx = i; });
+    }
+
+    function updateAddImgBtn() {
+      const btn   = document.getElementById('btn-add-img-field');
+      const count = document.querySelectorAll('#img-fields .img-field-row').length;
+      if (btn) btn.style.display = count >= 3 ? 'none' : '';
+    }
+
+    function getImgValues() {
+      return [...document.querySelectorAll('#img-fields .img-field-row input')]
+        .map(i => i.value.trim()).filter(Boolean);
+    }
+
     function openAddModal() {
       formSizes = new Set();
       document.getElementById('form-id').value        = '';
@@ -673,11 +915,10 @@
       document.getElementById('form-badge').value     = '';
       document.getElementById('form-price').value     = '';
       document.getElementById('form-old-price').value = '';
-      document.getElementById('form-img').value       = '';
-      document.getElementById('form-img-preview').classList.remove('show');
       document.getElementById('modal-title').textContent = 'Novo Produto';
       populateCatSelect('');
       buildSizePicker();
+      buildImgFields([]);
       document.getElementById('product-modal').classList.add('open');
       setTimeout(() => document.getElementById('form-name').focus(), 50);
     }
@@ -691,12 +932,12 @@
       document.getElementById('form-badge').value     = p.badge || '';
       document.getElementById('form-price').value     = p.price;
       document.getElementById('form-old-price').value = p.oldPrice || '';
-      document.getElementById('form-img').value       = p.img;
-      const prev = document.getElementById('form-img-preview');
-      prev.src = p.img; prev.classList.add('show');
       document.getElementById('modal-title').textContent = 'Editar Produto';
       populateCatSelect(p.category);
       buildSizePicker();
+      // Build image fields: prefer imgs array, fallback to img string
+      const imgList = Array.isArray(p.imgs) && p.imgs.length ? p.imgs : (p.img ? [p.img] : []);
+      buildImgFields(imgList);
       document.getElementById('product-modal').classList.add('open');
     }
 
@@ -709,21 +950,22 @@
       const badge = document.getElementById('form-badge').value || null;
       const price = parseFloat(document.getElementById('form-price').value);
       const oldP  = parseFloat(document.getElementById('form-old-price').value) || null;
-      const img   = document.getElementById('form-img').value.trim();
       const sizes = [...formSizes].sort((a,b) => a-b);
+      const imgs  = getImgValues();
+      const img   = imgs[0] || '';   // keep legacy img field for compatibility
 
-      if (!name)                  { toast('⚠️ Informe o nome do produto.');     return; }
-      if (!cat)                   { toast('⚠️ Selecione uma categoria.');        return; }
-      if (isNaN(price)||price<=0) { toast('⚠️ Informe um preço válido.');        return; }
-      if (!img)                   { toast('⚠️ Informe a URL da foto.');          return; }
-      if (!sizes.length)          { toast('⚠️ Selecione pelo menos um tamanho.'); return; }
+      if (!name)                  { toast('⚠️ Informe o nome do produto.');      return; }
+      if (!cat)                   { toast('⚠️ Selecione uma categoria.');         return; }
+      if (isNaN(price)||price<=0) { toast('⚠️ Informe um preço válido.');         return; }
+      if (!img)                   { toast('⚠️ Informe ao menos a foto principal.'); return; }
+      if (!sizes.length)          { toast('⚠️ Selecione pelo menos um tamanho.');  return; }
 
       if (id) {
         const idx = products.findIndex(p => p.id === Number(id));
-        if (idx > -1) products[idx] = { ...products[idx], name, category:cat, badge, price, oldPrice:oldP, img, sizes };
+        if (idx > -1) products[idx] = { ...products[idx], name, category:cat, badge, price, oldPrice:oldP, img, imgs, sizes };
         toast('✅ Produto atualizado!');
       } else {
-        products.push({ id: nextId(products), name, category:cat, badge, price, oldPrice:oldP, img, sizes });
+        products.push({ id: nextId(products), name, category:cat, badge, price, oldPrice:oldP, img, imgs, sizes });
         toast('✅ Produto adicionado!');
       }
       saveProducts(products);
@@ -972,10 +1214,11 @@
     document.getElementById('product-modal').addEventListener('click', e => {
       if (e.target === document.getElementById('product-modal')) closeProductModal();
     });
-    document.getElementById('form-img').addEventListener('input', function() {
-      const prev = document.getElementById('form-img-preview');
-      if (this.value) { prev.src = this.value; prev.classList.add('show'); }
-      else prev.classList.remove('show');
+    document.getElementById('btn-add-img-field').addEventListener('click', () => {
+      const count = document.querySelectorAll('#img-fields .img-field-row').length;
+      if (count >= 3) return;
+      addImgFieldRow('', count);
+      updateAddImgBtn();
     });
 
     // Category modal
