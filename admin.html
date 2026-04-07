@@ -1497,13 +1497,11 @@
           try {
             const imported = JSON.parse(e.target.result);
             if (!Array.isArray(imported)) throw new Error('Formato inválido');
-            // Merge: mantém produtos existentes, adiciona novos pelo _ml_id ou nome
             const existing = new Map(products.map(p => [p._ml_id || p.name, p]));
             let added = 0, updated = 0;
             imported.forEach(p => {
               const key = p._ml_id || p.name;
               if (existing.has(key)) {
-                // atualiza fotos, preço e estoque mas preserva categoria/tamanhos se já preenchidos
                 const ex = existing.get(key);
                 existing.set(key, { ...p, id: ex.id, category: ex.category || p.category, sizes: ex.sizes.length ? ex.sizes : p.sizes });
                 updated++;
@@ -1516,13 +1514,12 @@
             products = [...existing.values()];
             saveProducts(products);
             toast(`✅ Importado! ${added} novo(s), ${updated} atualizado(s).`);
-            refreshProductsData();
           } catch(err) {
             toast('❌ Erro ao importar: ' + err.message);
           }
         };
         reader.readAsText(file);
-        this.value = ''; // reset para permitir reimportar
+        this.value = '';
       });
       document.getElementById('btn-reset').addEventListener('click', () => {
         if (!confirm('Resetar todos os produtos para o catálogo padrão?')) return;
