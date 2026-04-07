@@ -634,37 +634,24 @@
     async function mlApiFetch(path) {
       const token = mlGetToken();
       if (!token) throw new Error('Não autenticado');
-      const targetUrl = 'https://api.mercadolibre.com' + path;
+      const url = 'https://api.mercadolibre.com' + path;
 
-      // tenta corsproxy.io
-      async function tryProxy(proxyUrl, opts) {
-        const r = await fetch(proxyUrl, opts);
-        const text = await r.text();
-        let data;
-        try { data = JSON.parse(text); } catch { throw new Error('Resposta inválida do ML'); }
-        if (r.status === 401 || data.error === 'invalid_token') { mlClearToken(); throw new Error('Sessão expirada. Conecte-se novamente.'); }
-        if (!r.ok && data.error) throw new Error(data.message || `Erro ${r.status}`);
-        return data;
-      }
-
-      // 1) corsproxy.io com Bearer
+      // 1) Tenta direto com Bearer (funciona no GitHub Pages com HTTPS)
       try {
-        return await tryProxy(
-          `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`,
-          { headers: { 'Authorization': `Bearer ${token}`, 'x-requested-with': 'XMLHttpRequest' } }
-        );
+        const r = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+        const text = await r.text();
+        const data = JSON.parse(text);
+        if (r.status === 401 || data.error === 'invalid_token') { mlClearToken(); throw new Error('Sessão expirada. Conecte-se novamente.'); }
+        if (r.ok) return data;
+        throw new Error(data.message || `Erro ${r.status}`);
       } catch(e) {
         if (e.message.includes('expirada')) throw e;
+        // 2) Fallback: sem auth (endpoints públicos)
+        const r2 = await fetch(url);
+        if (!r2.ok) throw new Error(`Erro ${r2.status} ao buscar dados`);
+        return r2.json();
       }
-
-      // 2) allorigins (não suporta headers custom, só funciona para endpoints públicos)
-      try {
-        const w = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
-        const j = await w.json();
-        return JSON.parse(j.contents);
-      } catch { throw new Error('Não foi possível conectar ao Mercado Livre. Verifique sua conexão.'); }
     }
-
     // Detecta retorno OAuth na URL
     (function checkOAuthCallback() {
       const params = new URLSearchParams(window.location.search);
