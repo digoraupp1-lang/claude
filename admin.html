@@ -761,13 +761,13 @@
         return null;
       }
 
-      // ── helper: fetch via proxy CORS para contornar bloqueio do ML em arquivo local
+      // ── helper: fetch direto na API do ML (funciona em domínio com HTTPS)
       async function mlFetch(url) {
-        const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-        const resp  = await fetch(proxy);
-        if (!resp.ok) throw new Error('Erro no proxy (' + resp.status + ')');
-        const wrapper = await resp.json();
-        return JSON.parse(wrapper.contents);
+        const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        if (resp.status === 403) throw new Error('Acesso negado pelo Mercado Livre. Verifique se o anúncio está ativo e tente novamente.');
+        if (resp.status === 404) throw new Error('Anúncio não encontrado. Confira o código MLB.');
+        if (!resp.ok) throw new Error('Erro ao buscar anúncio (código ' + resp.status + ')');
+        return resp.json();
       }
 
       // ── BUSCAR
@@ -823,6 +823,7 @@
           status.textContent = '✅ Anúncio encontrado!' + sizesMsg;
 
         } catch(e) {
+          console.error('[ML Import] Erro:', e);
           status.textContent = '❌ ' + e.message;
         } finally {
           document.getElementById('btn-ml-buscar').disabled = false;
