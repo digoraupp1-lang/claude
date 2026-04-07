@@ -446,6 +446,7 @@
     .cart-count.bounce { animation: cartBounce 0.4s cubic-bezier(0.34,1.56,0.64,1); }
 
     /* ── HERO ── */
+    /* ── HERO ── */
     .hero {
       min-height: 100vh;
       display: flex;
@@ -984,6 +985,7 @@
     </div>
   </div>
 
+
   <!-- HERO -->
   <section class="hero">
     <div class="hero-bg"></div>
@@ -1310,13 +1312,17 @@
                    data-pid="${p.id}" data-size="${s}">${s}</button>`
         ).join('');
 
-        const catLabel = { masculino:'Masculino', feminino:'Feminino', infantil:'Infantil' }[p.category] || p.category;
+        const mainImg = Array.isArray(p.imgs) && p.imgs.length > 0 ? p.imgs[0] : p.img;
+
+        const cats = typeof getCategories === 'function' ? getCategories() : [];
+        const catObj = cats.find(c => c.slug === p.category);
+        const catLabel = catObj ? catObj.name : ({ masculino:'Masculino', feminino:'Feminino', infantil:'Infantil' }[p.category] || p.category);
 
         const card = document.createElement('div');
         card.className = 'card';
         card.innerHTML = `
           <div class="card-img-wrap">
-            <img src="${p.img}" alt="${p.name}" loading="lazy" />
+            <img src="${mainImg}" alt="${p.name}" loading="lazy" />
             ${badgeHTML}
           </div>
           <div class="card-body">
