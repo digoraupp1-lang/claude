@@ -761,13 +761,17 @@
         return null;
       }
 
-      // ── helper: fetch direto na API do ML (funciona em domínio com HTTPS)
+      // ── helper: fetch via proxy CORS
       async function mlFetch(url) {
-        const resp = await fetch(url, { headers: { 'Accept': 'application/json' } });
-        if (resp.status === 403) throw new Error('Acesso negado pelo Mercado Livre. Verifique se o anúncio está ativo e tente novamente.');
-        if (resp.status === 404) throw new Error('Anúncio não encontrado. Confira o código MLB.');
-        if (!resp.ok) throw new Error('Erro ao buscar anúncio (código ' + resp.status + ')');
-        return resp.json();
+        // corsproxy.io retorna o conteúdo direto (sem wrapper)
+        const r = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
+        if (!r.ok) throw new Error('Erro ao acessar proxy (' + r.status + ')');
+        const text = await r.text();
+        try {
+          return JSON.parse(text);
+        } catch {
+          throw new Error('Resposta inválida do Mercado Livre.');
+        }
       }
 
       // ── BUSCAR
