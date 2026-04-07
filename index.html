@@ -695,15 +695,161 @@
       aspect-ratio: 4/3;
       overflow: hidden;
       background: var(--dark);
+      cursor: pointer;
     }
 
-    .card-img-wrap img {
+    /* ── CARROSSEL ── */
+    .carousel-track {
+      display: flex;
       width: 100%;
       height: 100%;
-      object-fit: cover;
-      transition: transform 0.5s ease;
+      transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
     }
-    .card:hover .card-img-wrap img { transform: scale(1.05); }
+    .carousel-slide {
+      flex: 0 0 100%;
+      height: 100%;
+    }
+    .carousel-slide img {
+      width: 100%; height: 100%;
+      object-fit: cover; display: block;
+    }
+    .carousel-btn {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 26px; height: 26px;
+      background: rgba(10,10,10,0.55); border: none; border-radius: 50%;
+      color: rgba(255,255,255,0.85);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; opacity: 0; z-index: 5; padding: 0;
+      transition: opacity 0.18s, background 0.18s, color 0.18s;
+    }
+    .carousel-btn svg { width: 11px; height: 11px; flex-shrink: 0; }
+    .carousel-btn.prev { left: 7px; }
+    .carousel-btn.next { right: 7px; }
+    .carousel-btn:hover { background: rgba(200,169,110,0.85); color: #000; }
+    .card:hover .carousel-btn { opacity: 1; }
+    .carousel-dots {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      display: flex; gap: 2px; z-index: 5;
+    }
+    .carousel-dot {
+      flex: 1; height: 2px;
+      background: rgba(255,255,255,0.2);
+      transition: background 0.2s; cursor: pointer;
+    }
+    .carousel-dot.active { background: var(--accent); }
+
+    /* ── MODAL PRODUTO ── */
+    .product-modal-overlay {
+      position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.75); backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center; padding: 1rem;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .product-modal-overlay.open { opacity: 1; pointer-events: all; }
+    .product-modal {
+      background: var(--off-black); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); width: 100%; max-width: 780px;
+      max-height: 90vh; overflow-y: auto;
+      display: flex; flex-direction: column;
+      transform: translateY(24px);
+      transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    .product-modal-overlay.open .product-modal { transform: translateY(0); }
+    @media (min-width: 640px) { .product-modal { flex-direction: row; max-height: 85vh; overflow: hidden; } }
+
+    .pm-gallery {
+      position: relative; flex-shrink: 0;
+      width: 100%; aspect-ratio: 4/3;
+      background: var(--dark); overflow: hidden;
+    }
+    @media (min-width: 640px) { .pm-gallery { width: 55%; aspect-ratio: auto; min-height: 420px; } }
+
+    .pm-gallery-track {
+      display: flex; width: 100%; height: 100%;
+      transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+    }
+    .pm-gallery-slide { flex: 0 0 100%; height: 100%; }
+    .pm-gallery-slide img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .pm-gallery-btn {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 34px; height: 34px;
+      background: rgba(10,10,10,0.6); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 50%; color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 5; padding: 0;
+      transition: background 0.2s;
+    }
+    .pm-gallery-btn svg { width: 14px; height: 14px; }
+    .pm-gallery-btn:hover { background: rgba(200,169,110,0.8); color: #000; border-color: transparent; }
+    .pm-gallery-btn.prev { left: 10px; }
+    .pm-gallery-btn.next { right: 10px; }
+    .pm-thumbs {
+      position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 5px; z-index: 5;
+    }
+    .pm-thumb {
+      width: 36px; height: 36px; border-radius: 4px; object-fit: cover;
+      border: 2px solid transparent; cursor: pointer;
+      transition: border-color 0.2s; opacity: 0.65;
+    }
+    .pm-thumb.active { border-color: var(--accent); opacity: 1; }
+    .pm-thumb:only-child { display: none; }
+
+    .pm-info {
+      flex: 1; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;
+      overflow-y: auto;
+    }
+    .pm-close {
+      position: absolute; top: 10px; right: 10px; z-index: 10;
+      width: 32px; height: 32px; background: rgba(10,10,10,0.7);
+      border: 1px solid rgba(255,255,255,0.15); border-radius: 50%;
+      color: #fff; display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 1rem; transition: background 0.2s;
+    }
+    .pm-close:hover { background: var(--promo); border-color: transparent; }
+    .pm-category {
+      font-size: 0.65rem; font-weight: 600; letter-spacing: 0.16em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .pm-name {
+      font-family: 'Playfair Display', serif; font-size: 1.5rem;
+      font-weight: 700; line-height: 1.25; color: var(--white);
+    }
+    .pm-price-row { display: flex; align-items: baseline; gap: 0.7rem; flex-wrap: wrap; }
+    .pm-price { font-family: 'Playfair Display', serif; font-size: 1.8rem; font-weight: 700; color: var(--accent); }
+    .pm-price-old { font-size: 1rem; color: var(--muted); text-decoration: line-through; }
+    .pm-discount { font-size: 0.75rem; font-weight: 700; background: rgba(224,82,82,0.15); color: var(--promo); padding: 0.2rem 0.6rem; border-radius: 4px; }
+    .pm-size-label { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.4rem; }
+    .pm-sizes { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+    .pm-size-btn {
+      width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;
+      background: var(--dark); border: 1px solid var(--border); border-radius: var(--radius);
+      color: var(--muted); font-size: 0.82rem; font-weight: 500;
+      cursor: pointer; transition: all var(--transition); font-family: 'DM Sans', sans-serif;
+    }
+    .pm-size-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .pm-size-btn.selected { background: var(--accent); border-color: var(--accent); color: var(--black); font-weight: 700; }
+    .pm-actions { display: flex; gap: 0.6rem; flex-direction: column; margin-top: auto; }
+    .pm-btn-cart {
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      background: var(--accent); color: var(--black);
+      font-family: 'DM Sans', sans-serif; font-size: 0.9rem; font-weight: 700;
+      padding: 0.85rem 1rem; border-radius: var(--radius); border: none; cursor: pointer;
+      transition: background var(--transition), transform var(--transition);
+    }
+    .pm-btn-cart:hover { background: var(--accent-light); transform: translateY(-1px); }
+    .pm-btn-cart svg { width: 16px; height: 16px; }
+    .pm-btn-wa {
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      background: rgba(37,211,102,0.1); border: 1px solid rgba(37,211,102,0.25);
+      color: #25d366; font-family: 'DM Sans', sans-serif; font-size: 0.87rem; font-weight: 600;
+      padding: 0.75rem 1rem; border-radius: var(--radius); cursor: pointer;
+      transition: background var(--transition);
+    }
+    .pm-btn-wa:hover { background: rgba(37,211,102,0.18); }
+    .pm-btn-wa svg { width: 16px; height: 16px; }
 
     .badge {
       position: absolute;
@@ -1061,6 +1207,24 @@
     <span id="footer-copy">© 2025 Casual Calçados — Todos os direitos reservados</span>
   </footer>
 
+  <!-- MODAL PRODUTO -->
+  <div class="product-modal-overlay" id="product-modal-overlay">
+    <div class="product-modal" id="product-modal-box">
+      <div class="pm-gallery" id="pm-gallery">
+        <div class="pm-gallery-track" id="pm-gallery-track"></div>
+        <button class="pm-gallery-btn prev" id="pm-prev">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <button class="pm-gallery-btn next" id="pm-next">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <div class="pm-thumbs" id="pm-thumbs"></div>
+        <button class="pm-close" id="pm-close">✕</button>
+      </div>
+      <div class="pm-info" id="pm-info"></div>
+    </div>
+  </div>
+
   <!-- TOAST -->
   <div class="toast" id="toast"></div>
 
@@ -1353,7 +1517,26 @@
                    data-pid="${p.id}" data-size="${s}">${s}</button>`
         ).join('');
 
-        const mainImg = Array.isArray(p.imgs) && p.imgs.length > 0 ? p.imgs[0] : p.img;
+        const imgs = Array.isArray(p.imgs) && p.imgs.length > 0 ? p.imgs : (p.img ? [p.img] : []);
+        const mainImg = imgs[0] || '';
+        const multiPhoto = imgs.length > 1;
+
+        const slidesHTML = imgs.map(src =>
+          `<div class="carousel-slide"><img src="${src}" alt="${p.name}" loading="lazy" /></div>`
+        ).join('');
+
+        const dotsHTML = multiPhoto
+          ? `<div class="carousel-dots">${imgs.map((_,i) =>
+              `<div class="carousel-dot${i===0?' active':''}" data-dot="${i}"></div>`
+            ).join('')}</div>` : '';
+
+        const arrowsHTML = multiPhoto ? `
+          <button class="carousel-btn prev" aria-label="Anterior">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <button class="carousel-btn next" aria-label="Próxima">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>` : '';
 
         const cats = typeof getCategories === 'function' ? getCategories() : [];
         const catObj = cats.find(c => c.slug === p.category);
@@ -1362,13 +1545,14 @@
         const card = document.createElement('div');
         card.className = 'card';
         card.innerHTML = `
-          <div class="card-img-wrap">
-            <img src="${mainImg}" alt="${p.name}" loading="lazy" />
+          <div class="card-img-wrap" data-open="${p.id}">
+            <div class="carousel-track" id="track-${p.id}">${slidesHTML}</div>
+            ${arrowsHTML}${dotsHTML}
             ${badgeHTML}
           </div>
           <div class="card-body">
             <span class="card-category">${catLabel}</span>
-            <div class="card-name">${p.name}</div>
+            <div class="card-name" style="cursor:pointer;" data-open="${p.id}">${p.name}</div>
             <div class="card-price-row">${priceHTML}</div>
             <div>
               <div class="size-label">Tamanho</div>
@@ -1386,6 +1570,29 @@
           </div>
         `;
         grid.appendChild(card);
+
+        // ── carrossel do card
+        if (multiPhoto) {
+          let cur = 0;
+          const track = card.querySelector(`#track-${p.id}`);
+          const dots  = card.querySelectorAll('.carousel-dot');
+          function goTo(idx) {
+            cur = (idx + imgs.length) % imgs.length;
+            track.style.transform = `translateX(-${cur * 100}%)`;
+            dots.forEach((d, i) => d.classList.toggle('active', i === cur));
+          }
+          card.querySelector('.carousel-btn.prev').addEventListener('click', e => { e.stopPropagation(); goTo(cur - 1); });
+          card.querySelector('.carousel-btn.next').addEventListener('click', e => { e.stopPropagation(); goTo(cur + 1); });
+          dots.forEach((d, i) => d.addEventListener('click', e => { e.stopPropagation(); goTo(i); }));
+        }
+
+        // ── abre modal ao clicar na imagem ou nome
+        card.querySelectorAll('[data-open]').forEach(el => {
+          el.addEventListener('click', e => {
+            e.stopPropagation();
+            openProductModal(p.id);
+          });
+        });
       });
 
       // size buttons
@@ -1434,6 +1641,131 @@
         });
       });
     }
+
+    // ── MODAL PRODUTO ──
+    let pmCur = 0;
+    let pmImgs = [];
+    let pmSelectedSize = null;
+    let pmProductId = null;
+
+    function openProductModal(pid) {
+      const p = PRODUCTS.find(x => x.id === pid);
+      if (!p) return;
+
+      pmProductId = pid;
+      pmSelectedSize = selectedSizes[pid] || null;
+      pmImgs = Array.isArray(p.imgs) && p.imgs.length ? p.imgs : (p.img ? [p.img] : []);
+      pmCur = 0;
+
+      const cats = typeof getCategories === 'function' ? getCategories() : [];
+      const catObj = cats.find(c => c.slug === p.category);
+      const catLabel = catObj ? catObj.name : ({ masculino:'Masculino', feminino:'Feminino', infantil:'Infantil' }[p.category] || p.category);
+      const disc = p.oldPrice ? Math.round((1 - p.price / p.oldPrice) * 100) : null;
+
+      // galeria
+      const track = document.getElementById('pm-gallery-track');
+      track.innerHTML = pmImgs.map(src =>
+        `<div class="pm-gallery-slide"><img src="${src}" alt="${p.name}" /></div>`
+      ).join('');
+      track.style.transform = 'translateX(0)';
+
+      // miniaturas
+      const thumbs = document.getElementById('pm-thumbs');
+      thumbs.innerHTML = pmImgs.map((src, i) =>
+        `<img class="pm-thumb${i===0?' active':''}" src="${src}" data-i="${i}" />`
+      ).join('');
+      thumbs.querySelectorAll('.pm-thumb').forEach(t => {
+        t.addEventListener('click', e => { e.stopPropagation(); pmGoTo(Number(t.dataset.i)); });
+      });
+
+      // setas (só mostra se > 1 foto)
+      document.getElementById('pm-prev').style.display = pmImgs.length > 1 ? '' : 'none';
+      document.getElementById('pm-next').style.display = pmImgs.length > 1 ? '' : 'none';
+
+      // info
+      renderPmInfo(p, catLabel, disc);
+
+      document.getElementById('product-modal-overlay').classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function renderPmInfo(p, catLabel, disc) {
+      const info = document.getElementById('pm-info');
+      const priceHTML = p.oldPrice
+        ? `<span class="pm-price">${fmt(p.price)}</span>
+           <span class="pm-price-old">${fmt(p.oldPrice)}</span>
+           <span class="pm-discount">-${disc}%</span>`
+        : `<span class="pm-price">${fmt(p.price)}</span>`;
+
+      const sizesHTML = p.sizes.map(s =>
+        `<button class="pm-size-btn${pmSelectedSize === s ? ' selected' : ''}" data-s="${s}">${s}</button>`
+      ).join('');
+
+      info.innerHTML = `
+        <span class="pm-category">${catLabel}</span>
+        <div class="pm-name">${p.name}</div>
+        <div class="pm-price-row">${priceHTML}</div>
+        <div>
+          <div class="pm-size-label">Tamanho${pmSelectedSize ? ` — Nº ${pmSelectedSize} selecionado` : ''}</div>
+          <div class="pm-sizes">${sizesHTML}</div>
+        </div>
+        <div class="pm-actions">
+          <button class="pm-btn-cart" id="pm-btn-cart">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+            ${pmSelectedSize ? `Adicionar Nº ${pmSelectedSize} ao Carrinho` : 'Selecione um tamanho'}
+          </button>
+          <button class="pm-btn-wa" id="pm-btn-wa">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            Comprar pelo WhatsApp
+          </button>
+        </div>`;
+
+      // tamanhos
+      info.querySelectorAll('.pm-size-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const s = Number(btn.dataset.s);
+          pmSelectedSize = pmSelectedSize === s ? null : s;
+          selectedSizes[pmProductId] = pmSelectedSize;
+          const cats2 = typeof getCategories === 'function' ? getCategories() : [];
+          const catObj2 = cats2.find(c => c.slug === p.category);
+          const catLabel2 = catObj2 ? catObj2.name : catLabel;
+          renderPmInfo(p, catLabel2, disc);
+        });
+      });
+
+      // botão carrinho
+      info.querySelector('#pm-btn-cart').addEventListener('click', () => {
+        if (!pmSelectedSize) { showToast('👆 Selecione um tamanho primeiro!'); return; }
+        addToCart(pmProductId, pmSelectedSize);
+        showToast('✅ Adicionado ao carrinho!');
+        closeProductModal();
+      });
+
+      // botão whatsapp
+      info.querySelector('#pm-btn-wa').addEventListener('click', () => {
+        if (!pmSelectedSize) { showToast('👆 Selecione um tamanho primeiro!'); return; }
+        const msg = `Olá! Tenho interesse no modelo *${p.name}*, tamanho *${pmSelectedSize}*. Ainda tem disponível?`;
+        window.open(`https://wa.me/${WHATSAPP}?text=${encodeMsg(msg)}`, '_blank');
+      });
+    }
+
+    function pmGoTo(idx) {
+      pmCur = (idx + pmImgs.length) % pmImgs.length;
+      document.getElementById('pm-gallery-track').style.transform = `translateX(-${pmCur * 100}%)`;
+      document.querySelectorAll('.pm-thumb').forEach((t, i) => t.classList.toggle('active', i === pmCur));
+    }
+
+    function closeProductModal() {
+      document.getElementById('product-modal-overlay').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    document.getElementById('pm-close').addEventListener('click', closeProductModal);
+    document.getElementById('pm-prev').addEventListener('click', e => { e.stopPropagation(); pmGoTo(pmCur - 1); });
+    document.getElementById('pm-next').addEventListener('click', e => { e.stopPropagation(); pmGoTo(pmCur + 1); });
+    document.getElementById('product-modal-overlay').addEventListener('click', e => {
+      if (e.target === document.getElementById('product-modal-overlay')) closeProductModal();
+    });
 
     // ── FILTER CLICKS ──
     document.querySelectorAll('[data-filter-cat]').forEach(btn => {
