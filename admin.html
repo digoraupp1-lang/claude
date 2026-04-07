@@ -772,58 +772,89 @@
         document.getElementById('btn-ml-buscar').disabled = true;
 
         try {
-          const resp = await fetch(`https://api.mercadolibre.com/items/${code}`);
-          if (!resp.ok) throw new Error('Anúncio não encontrado (código ' + resp.status + ')');
-          const data = await resp.json();
+          // A API pública de item bloqueia via CORS quando o admin está em file://.
+          // Usamos o endpoint de busca por ID que é público e tem CORS liberado.
+          const searchResp = await fetch(
+            `https://api.mercadolibre.com/sites/MLB/search?q=${code}&limit=1`,
+            { headers: { 'Accept': 'application/json' } }
+          );
+          if (!searchResp.ok) throw new Error('Erro ao buscar no Mercado Livre (código ' + searchResp.status + ')');
+          const searchData = await searchResp.json();
+          const results = searchData.results || [];
 
-          // ── fotos (até 5 para escolher, pré-seleciona as 3 primeiras)
-          mlPhotos = (data.pictures || []).slice(0, 5)
-            .map(p => (p.secure_url || p.url || '').replace(/-[A-Z]\.jpg/, '-O.jpg'))
+          // Filtra o resultado exato pelo ID
+          const item = results.find(r => r.id === code) || results[0];
+          if (!item) throw new Error('Nenhum anúncio encontrado para o código ' + code);
+
+          // ── fotos
+          mlPhotos = (item.thumbnail ? [item.thumbnail] : [])
+            .map(u => u.replace(/-[A-Z]\.jpg/i, '-O.jpg').replace('http:', 'https:'))
             .filter(Boolean);
+
+          // Busca fotos extras via endpoint de imagens (público, sem auth)
+          try {
+            const picResp = await fetch(`https://api.mercadolibre.com/items/${code}/pictures`);
+            if (picResp.ok) {
+              const pics = await picResp.json();
+              if (Array.isArray(pics) && pics.length) {
+                mlPhotos = pics.slice(0, 5)
+                  .map(p => (p.secure_url || p.url || '').replace(/-[A-Z]\.jpg/i, '-O.jpg'))
+                  .filter(Boolean);
+              }
+            }
+          } catch(_) { /* silencia — usa thumbnail como fallback */ }
+
           selectedPhotos = new Set(mlPhotos.slice(0,3).map((_,i) => i));
 
           // ── dados básicos
-          document.getElementById('ml-name').value  = data.title || '';
-          document.getElementById('ml-price').value = data.price || '';
-          document.getElementById('ml-stock').value = data.available_quantity || 0;
+          document.getElementById('ml-name').value  = item.title || '';
+          document.getElementById('ml-price').value = item.price || '';
+          document.getElementById('ml-stock').value =
+            item.available_quantity ?? item.sold_quantity ?? 0;
 
-          // ── extrair tamanhos das variações
-          // Atributos de tamanho no ML: SHOE_SIZE, SIZE, PANTS_SIZE, etc.
+          // ── tamanhos das variações (presentes no resultado de search)
           const SIZE_ATTRS = ['SHOE_SIZE','SIZE','PANTS_SIZE','SHIRT_SIZE','APPAREL_SIZE','KIDS_SIZE'];
           const sizesFound = new Set();
 
-          if (data.variations && data.variations.length > 0) {
-            data.variations.forEach(v => {
-              // só considera variações com estoque disponível
-              if ((v.available_quantity || 0) <= 0) return;
-              (v.attribute_combinations || []).forEach(attr => {
-                if (SIZE_ATTRS.includes(attr.id)) {
-                  // value_name pode ser "38", "39 BR", "38/39" — extrai só o número
-                  const raw = (attr.value_name || '').trim();
-                  const num = parseInt(raw);
-                  if (!isNaN(num) && ALL_SIZES.includes(num)) {
-                    sizesFound.add(num);
-                  } else if (raw) {
-                    // tenta pegar número após espaço: "38 BR" → 38
-                    const m = raw.match(/^(\d+)/);
-                    if (m && ALL_SIZES.includes(parseInt(m[1]))) sizesFound.add(parseInt(m[1]));
-                  }
-                }
+          // Resultado de search traz atributos disponíveis em variation_filters ou attributes
+          const attrSources = [
+            ...(item.attributes || []),
+            ...(item.variations_data ? Object.values(item.variations_data).flatMap(v => v.attribute_combinations || []) : []),
+          ];
+
+          attrSources.forEach(attr => {
+            if (SIZE_ATTRS.includes(attr.id)) {
+              const val = (attr.value_name || '').trim();
+              const m = val.match(/^(\d+)/);
+              const num = m ? parseInt(m[1]) : NaN;
+              if (!isNaN(num) && ALL_SIZES.includes(num)) sizesFound.add(num);
+            }
+          });
+
+          // Se não achou nos atributos, tenta via available_filters da busca
+          if (sizesFound.size === 0 && searchData.available_filters) {
+            const sizeFilter = searchData.available_filters.find(f =>
+              ['SHOE_SIZE','SIZE','APPAREL_SIZE'].includes(f.id)
+            );
+            if (sizeFilter) {
+              (sizeFilter.values || []).forEach(v => {
+                const m = (v.name || '').match(/^(\d+)/);
+                if (m && ALL_SIZES.includes(parseInt(m[1]))) sizesFound.add(parseInt(m[1]));
               });
-            });
+            }
           }
 
-          // ── atualiza size picker com os tamanhos encontrados
           mlSizes = sizesFound;
           buildMlSizePicker();
 
           const sizesMsg = sizesFound.size > 0
-            ? ` · ${sizesFound.size} tamanho${sizesFound.size>1?'s':''} importado${sizesFound.size>1?'s':''} do ML`
-            : ' · Nenhum tamanho detectado — selecione manualmente';
+            ? ` · ${sizesFound.size} tamanho${sizesFound.size > 1 ? 's' : ''} importado${sizesFound.size > 1 ? 's' : ''} do ML`
+            : ' · Tamanhos não detectados — selecione manualmente';
 
           renderPhotoGrid();
           document.getElementById('ml-preview').style.display = 'flex';
           status.textContent = '✅ Anúncio encontrado!' + sizesMsg;
+
         } catch(e) {
           status.textContent = '❌ ' + e.message;
         } finally {
