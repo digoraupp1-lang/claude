@@ -785,13 +785,27 @@
           const data = await mlFetch(`https://api.mercadolibre.com/items/${code}`);
 
           // ── fotos (até 5, pré-seleciona as 3 primeiras)
-          mlPhotos = (data.pictures || []).slice(0, 5)
-            .map(p => (p.secure_url || p.url || '').replace(/-[A-Z]\.jpg/i, '-O.jpg'))
-            .filter(Boolean);
-          if (!mlPhotos.length && data.thumbnail) {
-            mlPhotos = [data.thumbnail.replace(/-[A-Z]\.jpg/i, '-O.jpg').replace('http:', 'https:')];
+          // ML retorna secure_url no formato: https://http2.mlstatic.com/D_NQ_NP_XXXXX-MLB-I.jpg
+          // Sufixos: -I = pequena, -O = original/grande, -V = grande, -F = grande
+          // Substituímos qualquer sufixo de 1 letra antes de .jpg pelo -O (maior qualidade)
+          function mlBestUrl(p) {
+            const url = (p.secure_url || p.url || '').replace('http://', 'https://');
+            if (!url) return '';
+            // troca sufixo tipo -I.jpg, -S.jpg, -V.jpg etc por -O.jpg
+            return url.replace(/-[A-Z](\.(jpe?g|png|webp))$/i, '-O$1');
           }
+
+          mlPhotos = (data.pictures || []).slice(0, 5).map(mlBestUrl).filter(Boolean);
+
+          // fallback: thumbnail do item
+          if (!mlPhotos.length && data.thumbnail) {
+            mlPhotos = [mlBestUrl({ url: data.thumbnail })];
+          }
+
           selectedPhotos = new Set(mlPhotos.slice(0, 3).map((_, i) => i));
+
+          console.log('[ML Import] pictures brutas:', data.pictures);
+          console.log('[ML Import] fotos processadas:', mlPhotos);
 
           // ── dados básicos
           document.getElementById('ml-name').value  = data.title  || '';
