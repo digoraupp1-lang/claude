@@ -591,18 +591,118 @@
     // ════════════════════════════════════
     // IMPORTAR DO MERCADO LIVRE
     // ════════════════════════════════════
+    // ════════════════════════════════════
+    // IMPORTAR DO MERCADO LIVRE — OAuth
+    // ════════════════════════════════════
+    const ML_APP_ID    = '8068396076605710';
+    const ML_SECRET    = 'tmSFiSCpClmyA0bV0BVZ4u6KHdBF4moP';
+    const ML_REDIRECT  = 'https://digoraupp1-lang.github.io/claude/admin.html';
+    const ML_TOKEN_KEY = 'cc_ml_token';
+
+    function mlGetToken()          { return localStorage.getItem(ML_TOKEN_KEY); }
+    function mlSaveToken(t)        { localStorage.setItem(ML_TOKEN_KEY, t); }
+    function mlClearToken()        { localStorage.removeItem(ML_TOKEN_KEY); }
+
+    async function mlExchangeCode(code) {
+      const body = new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: ML_APP_ID,
+        client_secret: ML_SECRET,
+        code,
+        redirect_uri: ML_REDIRECT,
+      });
+      // tenta corsproxy.io primeiro, depois allorigins
+      let text, r;
+      try {
+        r = await fetch(
+          `https://corsproxy.io/?url=${encodeURIComponent('https://api.mercadolibre.com/oauth/token')}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'x-requested-with': 'XMLHttpRequest' }, body }
+        );
+        text = await r.text();
+      } catch {
+        r = await fetch(
+          `https://api.allorigins.win/get?url=${encodeURIComponent('https://api.mercadolibre.com/oauth/token')}`,
+          { method: 'GET' } // allorigins só suporta GET, fallback limitado
+        );
+        const w = await r.json(); text = w.contents;
+      }
+      const data = JSON.parse(text);
+      if (!data.access_token) throw new Error(data.message || 'Falha na autenticação');
+      return data;
+    }
+
+    async function mlApiFetch(path) {
+      const token = mlGetToken();
+      if (!token) throw new Error('Não autenticado');
+      const targetUrl = 'https://api.mercadolibre.com' + path;
+
+      // tenta corsproxy.io
+      async function tryProxy(proxyUrl, opts) {
+        const r = await fetch(proxyUrl, opts);
+        const text = await r.text();
+        let data;
+        try { data = JSON.parse(text); } catch { throw new Error('Resposta inválida do ML'); }
+        if (r.status === 401 || data.error === 'invalid_token') { mlClearToken(); throw new Error('Sessão expirada. Conecte-se novamente.'); }
+        if (!r.ok && data.error) throw new Error(data.message || `Erro ${r.status}`);
+        return data;
+      }
+
+      // 1) corsproxy.io com Bearer
+      try {
+        return await tryProxy(
+          `https://corsproxy.io/?url=${encodeURIComponent(targetUrl)}`,
+          { headers: { 'Authorization': `Bearer ${token}`, 'x-requested-with': 'XMLHttpRequest' } }
+        );
+      } catch(e) {
+        if (e.message.includes('expirada')) throw e;
+      }
+
+      // 2) allorigins (não suporta headers custom, só funciona para endpoints públicos)
+      try {
+        const w = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
+        const j = await w.json();
+        return JSON.parse(j.contents);
+      } catch { throw new Error('Não foi possível conectar ao Mercado Livre. Verifique sua conexão.'); }
+    }
+
+    // Detecta retorno OAuth na URL
+    (function checkOAuthCallback() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      if (!code) return;
+      window.history.replaceState({}, '', window.location.pathname);
+      mlExchangeCode(code).then(data => {
+        mlSaveToken(data.access_token);
+        currentPage = 'importar';
+        if (document.getElementById('admin-screen').classList.contains('visible')) renderPage();
+      }).catch(e => console.error('OAuth error:', e));
+    })();
+
     function renderImportarPage() {
+      const isConnected = !!mlGetToken();
+
       document.getElementById('main-content').innerHTML = `
         <div class="page-header">
           <div>
             <div class="page-title">Importar do Mercado Livre</div>
-            <div class="page-sub">Cole o link ou código de um anúncio para importar automaticamente</div>
+            <div class="page-sub">${isConnected ? '✅ Conectado — cole o link de um anúncio' : 'Conecte sua conta para importar anúncios'}</div>
           </div>
+          ${isConnected ? '<button class="btn btn-outline btn-sm" id="btn-ml-desconectar">Desconectar</button>' : ''}
         </div>
-
         <div style="max-width:680px;display:flex;flex-direction:column;gap:1.3rem;">
-
-          <!-- BUSCA -->
+        ${!isConnected ? `
+          <div class="content-card" style="align-items:center;text-align:center;padding:2.5rem;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--accent);margin-bottom:.8rem;"><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/></svg>
+            <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;margin-bottom:.5rem;">Autenticação necessária</div>
+            <p style="color:var(--muted);font-size:.85rem;max-width:380px;line-height:1.6;margin-bottom:1.5rem;">
+              Para importar fotos, tamanhos e estoque dos seus anúncios, autorize o acesso à sua conta do Mercado Livre.
+            </p>
+            <button class="btn btn-gold" id="btn-ml-conectar" style="padding:.9rem 2rem;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:17px;height:17px;"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+              Conectar com Mercado Livre
+            </button>
+          </div>
+        ` : `
           <div class="content-card">
             <div class="content-card-title">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--accent)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -610,9 +710,8 @@
             </div>
             <div class="field">
               <label>Link ou código do produto (MLB...)</label>
-              <input type="text" id="ml-input"
-                placeholder="Ex: https://produto.mercadolivre.com.br/MLB-... ou MLB4552690821" />
-              <span class="field-hint">Funciona com o link completo do anúncio ou apenas o código MLB.</span>
+              <input type="text" id="ml-input" placeholder="https://produto.mercadolivre.com.br/MLB-... ou MLB123456" />
+              <span class="field-hint">Funciona com o link completo ou apenas o código MLB.</span>
             </div>
             <div style="display:flex;gap:.7rem;align-items:center;">
               <button class="btn btn-gold" id="btn-ml-buscar">
@@ -623,63 +722,36 @@
             </div>
           </div>
 
-          <!-- PREVIEW (oculto até buscar) -->
           <div id="ml-preview" style="display:none;flex-direction:column;gap:1.3rem;">
-
-            <!-- FOTOS -->
             <div class="content-card">
               <div class="content-card-title">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;color:var(--accent)"><rect x="3" y="3" width="18" height="12" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                 Fotos (até 3)
               </div>
               <div id="ml-photos" style="display:flex;gap:.7rem;flex-wrap:wrap;"></div>
-              <span class="field-hint">Clique nas fotos para selecionar/desmarcar quais importar.</span>
+              <span class="field-hint">Clique para selecionar/desmarcar.</span>
             </div>
-
-            <!-- DADOS -->
             <div class="content-card">
               <div class="content-card-title">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;color:var(--accent)"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                 Dados do Produto
               </div>
-              <div class="field">
-                <label>Nome do Produto *</label>
-                <input type="text" id="ml-name" placeholder="Nome do anúncio" />
+              <div class="field"><label>Nome do Produto *</label><input type="text" id="ml-name" placeholder="Nome do anúncio" /></div>
+              <div class="form-row">
+                <div class="field"><label>Preço (R$) *</label><input type="number" id="ml-price" placeholder="0.00" min="0" step="0.01" /></div>
+                <div class="field"><label>Estoque (ML)</label><input type="number" id="ml-stock" readonly style="opacity:.6;cursor:not-allowed;" /></div>
               </div>
               <div class="form-row">
-                <div class="field">
-                  <label>Preço (R$) *</label>
-                  <input type="number" id="ml-price" placeholder="0.00" min="0" step="0.01" />
-                </div>
-                <div class="field">
-                  <label>Estoque disponível (ML)</label>
-                  <input type="number" id="ml-stock" placeholder="—" readonly
-                    style="opacity:.6;cursor:not-allowed;" />
-                </div>
-              </div>
-              <div class="form-row">
-                <div class="field">
-                  <label>Categoria *</label>
-                  <select id="ml-category"><option value="">Selecione...</option></select>
-                </div>
-                <div class="field">
-                  <label>Badge</label>
-                  <select id="ml-badge">
-                    <option value="">Nenhum</option>
-                    <option value="novo">🆕 Novo</option>
-                    <option value="promo">🔥 Promoção</option>
-                  </select>
-                </div>
+                <div class="field"><label>Categoria *</label><select id="ml-category"><option value="">Selecione...</option></select></div>
+                <div class="field"><label>Badge</label><select id="ml-badge"><option value="">Nenhum</option><option value="novo">🆕 Novo</option><option value="promo">🔥 Promoção</option></select></div>
               </div>
               <div class="field">
-                <label>Tamanhos Disponíveis *</label>
+                <label>Tamanhos *</label>
                 <div class="size-picker-wrap" id="ml-size-picker"></div>
-                <div class="size-hint">Clique nos números para selecionar/desmarcar</div>
+                <div class="size-hint">Clique para selecionar/desmarcar</div>
               </div>
             </div>
-
-            <!-- AÇÃO -->
-            <div style="display:flex;gap:.8rem;align-items:center;">
+            <div style="display:flex;gap:.8rem;">
               <button class="btn btn-gold" id="btn-ml-importar" style="padding:.85rem 1.8rem;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 Adicionar ao Catálogo
@@ -687,38 +759,28 @@
               <button class="btn btn-outline" id="btn-ml-limpar">Limpar</button>
             </div>
           </div>
-
+        `}
         </div>`;
 
-      // ── populate category select
-      const catSel = document.getElementById('ml-category');
+      document.getElementById('btn-ml-desconectar')?.addEventListener('click', () => { mlClearToken(); renderImportarPage(); });
+      document.getElementById('btn-ml-conectar')?.addEventListener('click', () => {
+        window.location.href = `https://auth.mercadolivre.com.br/authorization?response_type=code&client_id=${ML_APP_ID}&redirect_uri=${encodeURIComponent(ML_REDIRECT)}`;
+      });
+
+      if (!isConnected) return;
+
+      // populate cats
       getCategories().forEach(c => {
         const o = document.createElement('option');
         o.value = c.slug; o.textContent = c.name;
-        catSel.appendChild(o);
+        document.getElementById('ml-category').appendChild(o);
       });
 
-      // ── size picker state
-      let mlSizes = new Set();
-      function buildMlSizePicker() {
-        const wrap = document.getElementById('ml-size-picker');
-        wrap.innerHTML = '';
-        ALL_SIZES.forEach(s => {
-          const chip = document.createElement('div');
-          chip.className = 'size-chip' + (mlSizes.has(s) ? ' on' : '');
-          chip.textContent = s;
-          chip.addEventListener('click', () => {
-            mlSizes.has(s) ? mlSizes.delete(s) : mlSizes.add(s);
-            chip.classList.toggle('on');
-          });
-          wrap.appendChild(chip);
-        });
-      }
-      buildMlSizePicker();
+      let mlPhotos = [], selectedPhotos = new Set(), mlSizesLocal = new Set();
 
-      // ── photo selection state
-      let mlPhotos = [];      // all fetched photo URLs
-      let selectedPhotos = new Set(); // indexes selected
+      function mlBestUrl(p) {
+        return (p.secure_url || p.url || '').replace('http://', 'https://').replace(/-[A-Z](\.(jpe?g|png|webp))$/i, '-O$1');
+      }
 
       function renderPhotoGrid() {
         const grid = document.getElementById('ml-photos');
@@ -728,166 +790,98 @@
           wrap.style.cssText = 'position:relative;cursor:pointer;';
           const img = document.createElement('img');
           img.src = url;
-          img.style.cssText = `width:110px;height:110px;object-fit:cover;border-radius:6px;
-            border:2px solid ${selectedPhotos.has(i) ? 'var(--accent)' : 'var(--border)'};
-            transition:border-color .2s;`;
+          img.style.cssText = `width:110px;height:110px;object-fit:cover;border-radius:6px;border:2px solid ${selectedPhotos.has(i)?'var(--accent)':'var(--border)'};transition:border .2s;`;
           const check = document.createElement('div');
-          check.style.cssText = `position:absolute;top:5px;right:5px;width:20px;height:20px;
-            background:${selectedPhotos.has(i) ? 'var(--accent)' : 'rgba(0,0,0,0.5)'};
-            border-radius:50%;display:flex;align-items:center;justify-content:center;
-            font-size:11px;color:${selectedPhotos.has(i) ? '#000' : '#fff'};font-weight:700;`;
+          check.style.cssText = `position:absolute;top:5px;right:5px;width:20px;height:20px;background:${selectedPhotos.has(i)?'var(--accent)':'rgba(0,0,0,.5)'};border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;color:${selectedPhotos.has(i)?'#000':'#fff'};font-weight:700;`;
           check.textContent = selectedPhotos.has(i) ? '✓' : (i+1);
-          wrap.appendChild(img);
-          wrap.appendChild(check);
+          wrap.append(img, check);
           wrap.addEventListener('click', () => {
-            if (selectedPhotos.has(i)) {
-              selectedPhotos.delete(i);
-            } else {
-              if (selectedPhotos.size >= 3) { toast('⚠️ Máximo de 3 fotos selecionadas.'); return; }
-              selectedPhotos.add(i);
-            }
+            if (selectedPhotos.has(i)) selectedPhotos.delete(i);
+            else { if (selectedPhotos.size >= 3) { toast('⚠️ Máximo 3 fotos.'); return; } selectedPhotos.add(i); }
             renderPhotoGrid();
           });
           grid.appendChild(wrap);
         });
       }
 
-      // ── extract MLB code from input
-      function extractMLB(input) {
-        const clean = input.trim();
-        // direct code: MLB1234567890
-        const direct = clean.match(/MLB[\-]?(\d+)/i);
-        if (direct) return 'MLB' + direct[1].replace('-','');
-        return null;
+      function buildSizePickerLocal() {
+        const wrap = document.getElementById('ml-size-picker');
+        wrap.innerHTML = '';
+        ALL_SIZES.forEach(s => {
+          const chip = document.createElement('div');
+          chip.className = 'size-chip' + (mlSizesLocal.has(s) ? ' on' : '');
+          chip.textContent = s;
+          chip.addEventListener('click', () => { mlSizesLocal.has(s) ? mlSizesLocal.delete(s) : mlSizesLocal.add(s); chip.classList.toggle('on'); });
+          wrap.appendChild(chip);
+        });
       }
+      buildSizePickerLocal();
 
-      // ── helper: fetch via proxy CORS
-      async function mlFetch(url) {
-        // corsproxy.io retorna o conteúdo direto (sem wrapper)
-        const r = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
-        if (!r.ok) throw new Error('Erro ao acessar proxy (' + r.status + ')');
-        const text = await r.text();
-        try {
-          return JSON.parse(text);
-        } catch {
-          throw new Error('Resposta inválida do Mercado Livre.');
-        }
-      }
+      function extractMLB(v) { const m = v.trim().match(/MLB[\-]?(\d+)/i); return m ? 'MLB'+m[1].replace('-','') : null; }
 
-      // ── BUSCAR
       document.getElementById('btn-ml-buscar').addEventListener('click', async () => {
-        const raw = document.getElementById('ml-input').value;
-        const code = extractMLB(raw);
-        if (!code) { toast('⚠️ Código MLB não encontrado. Cole o link completo ou o código (MLB...).'); return; }
-
+        const code = extractMLB(document.getElementById('ml-input').value);
+        if (!code) { toast('⚠️ Código MLB não encontrado.'); return; }
         const status = document.getElementById('ml-status');
         status.textContent = 'Buscando...';
         document.getElementById('btn-ml-buscar').disabled = true;
-
         try {
-          // Busca dados completos do item via proxy
-          const data = await mlFetch(`https://api.mercadolibre.com/items/${code}`);
-
-          // ── fotos (até 5, pré-seleciona as 3 primeiras)
-          // ML retorna secure_url no formato: https://http2.mlstatic.com/D_NQ_NP_XXXXX-MLB-I.jpg
-          // Sufixos: -I = pequena, -O = original/grande, -V = grande, -F = grande
-          // Substituímos qualquer sufixo de 1 letra antes de .jpg pelo -O (maior qualidade)
-          function mlBestUrl(p) {
-            const url = (p.secure_url || p.url || '').replace('http://', 'https://');
-            if (!url) return '';
-            // troca sufixo tipo -I.jpg, -S.jpg, -V.jpg etc por -O.jpg
-            return url.replace(/-[A-Z](\.(jpe?g|png|webp))$/i, '-O$1');
-          }
-
-          mlPhotos = (data.pictures || []).slice(0, 5).map(mlBestUrl).filter(Boolean);
-
-          // fallback: thumbnail do item
-          if (!mlPhotos.length && data.thumbnail) {
-            mlPhotos = [mlBestUrl({ url: data.thumbnail })];
-          }
-
-          selectedPhotos = new Set(mlPhotos.slice(0, 3).map((_, i) => i));
-
-          console.log('[ML Import] pictures brutas:', data.pictures);
-          console.log('[ML Import] fotos processadas:', mlPhotos);
-
-          // ── dados básicos
+          const data = await mlApiFetch('/items/' + code);
+          mlPhotos = (data.pictures||[]).slice(0,5).map(mlBestUrl).filter(Boolean);
+          if (!mlPhotos.length && data.thumbnail) mlPhotos = [mlBestUrl({url:data.thumbnail})];
+          selectedPhotos = new Set(mlPhotos.slice(0,3).map((_,i)=>i));
           document.getElementById('ml-name').value  = data.title  || '';
           document.getElementById('ml-price').value = data.price  || '';
           document.getElementById('ml-stock').value = data.available_quantity ?? 0;
-
-          // ── tamanhos das variações (só com estoque disponível)
-          const SIZE_ATTRS = ['SHOE_SIZE','SIZE','PANTS_SIZE','SHIRT_SIZE','APPAREL_SIZE','KIDS_SIZE'];
-          const sizesFound = new Set();
-
-          (data.variations || []).forEach(v => {
-            if ((v.available_quantity || 0) <= 0) return;
-            (v.attribute_combinations || []).forEach(attr => {
-              if (!SIZE_ATTRS.includes(attr.id)) return;
-              const m = (attr.value_name || '').match(/^(\d+)/);
-              if (m && ALL_SIZES.includes(parseInt(m[1]))) sizesFound.add(parseInt(m[1]));
+          const SA = ['SHOE_SIZE','SIZE','PANTS_SIZE','SHIRT_SIZE','APPAREL_SIZE','KIDS_SIZE'];
+          mlSizesLocal = new Set();
+          (data.variations||[]).forEach(v => {
+            if ((v.available_quantity||0)<=0) return;
+            (v.attribute_combinations||[]).forEach(a => {
+              if (!SA.includes(a.id)) return;
+              const m = (a.value_name||'').match(/^(\d+)/);
+              if (m && ALL_SIZES.includes(parseInt(m[1]))) mlSizesLocal.add(parseInt(m[1]));
             });
           });
-
-          mlSizes = sizesFound;
-          buildMlSizePicker();
-
-          const sizesMsg = sizesFound.size > 0
-            ? ` · ${sizesFound.size} tamanho${sizesFound.size > 1 ? 's' : ''} importado${sizesFound.size > 1 ? 's' : ''} do ML`
-            : ' · Tamanhos não detectados — selecione manualmente';
-
+          buildSizePickerLocal();
           renderPhotoGrid();
           document.getElementById('ml-preview').style.display = 'flex';
-          status.textContent = '✅ Anúncio encontrado!' + sizesMsg;
-
+          status.textContent = '✅ Encontrado!' + (mlSizesLocal.size ? ` · ${mlSizesLocal.size} tamanho${mlSizesLocal.size>1?'s':''} importado${mlSizesLocal.size>1?'s':''}` : ' · Tamanhos não detectados');
         } catch(e) {
-          console.error('[ML Import] Erro:', e);
           status.textContent = '❌ ' + e.message;
-        } finally {
-          document.getElementById('btn-ml-buscar').disabled = false;
-        }
+          if (e.message.includes('expirada')) renderImportarPage();
+        } finally { document.getElementById('btn-ml-buscar').disabled = false; }
       });
 
-      // allow Enter key on input
-      document.getElementById('ml-input').addEventListener('keydown', e => {
-        if (e.key === 'Enter') document.getElementById('btn-ml-buscar').click();
-      });
+      document.getElementById('ml-input').addEventListener('keydown', e => { if(e.key==='Enter') document.getElementById('btn-ml-buscar').click(); });
 
-      // ── IMPORTAR
       document.getElementById('btn-ml-importar').addEventListener('click', () => {
         const name  = document.getElementById('ml-name').value.trim();
         const price = parseFloat(document.getElementById('ml-price').value);
         const cat   = document.getElementById('ml-category').value;
         const badge = document.getElementById('ml-badge').value || null;
-        const sizes = [...mlSizes].sort((a,b) => a-b);
-        const imgs  = [...selectedPhotos].sort().map(i => mlPhotos[i]);
-        const img   = imgs[0] || '';
-
-        if (!name)                  { toast('⚠️ Informe o nome do produto.');       return; }
-        if (!cat)                   { toast('⚠️ Selecione uma categoria.');          return; }
-        if (isNaN(price)||price<=0) { toast('⚠️ Informe um preço válido.');          return; }
-        if (!img)                   { toast('⚠️ Selecione ao menos uma foto.');      return; }
-        if (!sizes.length)          { toast('⚠️ Selecione pelo menos um tamanho.');  return; }
-
-        products.push({ id: nextId(products), name, category: cat, badge, price, oldPrice: null, img, imgs, sizes });
+        const sizes = [...mlSizesLocal].sort((a,b)=>a-b);
+        const imgs  = [...selectedPhotos].sort().map(i=>mlPhotos[i]);
+        const img   = imgs[0]||'';
+        if (!name)  { toast('⚠️ Informe o nome.'); return; }
+        if (!cat)   { toast('⚠️ Selecione categoria.'); return; }
+        if (isNaN(price)||price<=0) { toast('⚠️ Preço inválido.'); return; }
+        if (!img)   { toast('⚠️ Selecione uma foto.'); return; }
+        if (!sizes.length) { toast('⚠️ Selecione tamanhos.'); return; }
+        products.push({ id:nextId(products), name, category:cat, badge, price, oldPrice:null, img, imgs, sizes });
         saveProducts(products);
-        toast('✅ Produto "' + name + '" adicionado ao catálogo!');
-
-        // reset
-        document.getElementById('ml-input').value = '';
-        document.getElementById('ml-status').textContent = '';
-        document.getElementById('ml-preview').style.display = 'none';
-        mlPhotos = []; selectedPhotos = new Set(); mlSizes = new Set();
-        buildMlSizePicker();
+        toast('✅ "'+name+'" adicionado!');
+        document.getElementById('ml-input').value='';
+        document.getElementById('ml-status').textContent='';
+        document.getElementById('ml-preview').style.display='none';
+        mlPhotos=[]; selectedPhotos=new Set(); mlSizesLocal=new Set(); buildSizePickerLocal();
       });
 
-      // ── LIMPAR
       document.getElementById('btn-ml-limpar').addEventListener('click', () => {
-        document.getElementById('ml-input').value = '';
-        document.getElementById('ml-status').textContent = '';
-        document.getElementById('ml-preview').style.display = 'none';
-        mlPhotos = []; selectedPhotos = new Set(); mlSizes = new Set();
-        buildMlSizePicker();
+        document.getElementById('ml-input').value='';
+        document.getElementById('ml-status').textContent='';
+        document.getElementById('ml-preview').style.display='none';
+        mlPhotos=[]; selectedPhotos=new Set(); mlSizesLocal=new Set(); buildSizePickerLocal();
       });
     }
 
