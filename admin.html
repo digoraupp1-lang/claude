@@ -761,6 +761,15 @@
         return null;
       }
 
+      // ── helper: fetch via proxy CORS para contornar bloqueio do ML em arquivo local
+      async function mlFetch(url) {
+        const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+        const resp  = await fetch(proxy);
+        if (!resp.ok) throw new Error('Erro no proxy (' + resp.status + ')');
+        const wrapper = await resp.json();
+        return JSON.parse(wrapper.contents);
+      }
+
       // ── BUSCAR
       document.getElementById('btn-ml-buscar').addEventListener('click', async () => {
         const raw = document.getElementById('ml-input').value;
@@ -772,77 +781,35 @@
         document.getElementById('btn-ml-buscar').disabled = true;
 
         try {
-          // A API pública de item bloqueia via CORS quando o admin está em file://.
-          // Usamos o endpoint de busca por ID que é público e tem CORS liberado.
-          const searchResp = await fetch(
-            `https://api.mercadolibre.com/sites/MLB/search?q=${code}&limit=1`,
-            { headers: { 'Accept': 'application/json' } }
-          );
-          if (!searchResp.ok) throw new Error('Erro ao buscar no Mercado Livre (código ' + searchResp.status + ')');
-          const searchData = await searchResp.json();
-          const results = searchData.results || [];
+          // Busca dados completos do item via proxy
+          const data = await mlFetch(`https://api.mercadolibre.com/items/${code}`);
 
-          // Filtra o resultado exato pelo ID
-          const item = results.find(r => r.id === code) || results[0];
-          if (!item) throw new Error('Nenhum anúncio encontrado para o código ' + code);
-
-          // ── fotos
-          mlPhotos = (item.thumbnail ? [item.thumbnail] : [])
-            .map(u => u.replace(/-[A-Z]\.jpg/i, '-O.jpg').replace('http:', 'https:'))
+          // ── fotos (até 5, pré-seleciona as 3 primeiras)
+          mlPhotos = (data.pictures || []).slice(0, 5)
+            .map(p => (p.secure_url || p.url || '').replace(/-[A-Z]\.jpg/i, '-O.jpg'))
             .filter(Boolean);
-
-          // Busca fotos extras via endpoint de imagens (público, sem auth)
-          try {
-            const picResp = await fetch(`https://api.mercadolibre.com/items/${code}/pictures`);
-            if (picResp.ok) {
-              const pics = await picResp.json();
-              if (Array.isArray(pics) && pics.length) {
-                mlPhotos = pics.slice(0, 5)
-                  .map(p => (p.secure_url || p.url || '').replace(/-[A-Z]\.jpg/i, '-O.jpg'))
-                  .filter(Boolean);
-              }
-            }
-          } catch(_) { /* silencia — usa thumbnail como fallback */ }
-
-          selectedPhotos = new Set(mlPhotos.slice(0,3).map((_,i) => i));
+          if (!mlPhotos.length && data.thumbnail) {
+            mlPhotos = [data.thumbnail.replace(/-[A-Z]\.jpg/i, '-O.jpg').replace('http:', 'https:')];
+          }
+          selectedPhotos = new Set(mlPhotos.slice(0, 3).map((_, i) => i));
 
           // ── dados básicos
-          document.getElementById('ml-name').value  = item.title || '';
-          document.getElementById('ml-price').value = item.price || '';
-          document.getElementById('ml-stock').value =
-            item.available_quantity ?? item.sold_quantity ?? 0;
+          document.getElementById('ml-name').value  = data.title  || '';
+          document.getElementById('ml-price').value = data.price  || '';
+          document.getElementById('ml-stock').value = data.available_quantity ?? 0;
 
-          // ── tamanhos das variações (presentes no resultado de search)
+          // ── tamanhos das variações (só com estoque disponível)
           const SIZE_ATTRS = ['SHOE_SIZE','SIZE','PANTS_SIZE','SHIRT_SIZE','APPAREL_SIZE','KIDS_SIZE'];
           const sizesFound = new Set();
 
-          // Resultado de search traz atributos disponíveis em variation_filters ou attributes
-          const attrSources = [
-            ...(item.attributes || []),
-            ...(item.variations_data ? Object.values(item.variations_data).flatMap(v => v.attribute_combinations || []) : []),
-          ];
-
-          attrSources.forEach(attr => {
-            if (SIZE_ATTRS.includes(attr.id)) {
-              const val = (attr.value_name || '').trim();
-              const m = val.match(/^(\d+)/);
-              const num = m ? parseInt(m[1]) : NaN;
-              if (!isNaN(num) && ALL_SIZES.includes(num)) sizesFound.add(num);
-            }
+          (data.variations || []).forEach(v => {
+            if ((v.available_quantity || 0) <= 0) return;
+            (v.attribute_combinations || []).forEach(attr => {
+              if (!SIZE_ATTRS.includes(attr.id)) return;
+              const m = (attr.value_name || '').match(/^(\d+)/);
+              if (m && ALL_SIZES.includes(parseInt(m[1]))) sizesFound.add(parseInt(m[1]));
+            });
           });
-
-          // Se não achou nos atributos, tenta via available_filters da busca
-          if (sizesFound.size === 0 && searchData.available_filters) {
-            const sizeFilter = searchData.available_filters.find(f =>
-              ['SHOE_SIZE','SIZE','APPAREL_SIZE'].includes(f.id)
-            );
-            if (sizeFilter) {
-              (sizeFilter.values || []).forEach(v => {
-                const m = (v.name || '').match(/^(\d+)/);
-                if (m && ALL_SIZES.includes(parseInt(m[1]))) sizesFound.add(parseInt(m[1]));
-              });
-            }
-          }
 
           mlSizes = sizesFound;
           buildMlSizePicker();
